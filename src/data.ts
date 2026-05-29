@@ -1,8 +1,8 @@
 import { Scene } from './types';
-import morningWindow from './assets/images/morning_window_1779963540530.png';
-import rainyCafe from './assets/images/rainy_cafe_1779963557083.png';
-import nightLibrary from './assets/images/night_library_1779963571592.png';
-import seasideStudy from './assets/images/seaside_study_1779963586717.png';
+import morningWindow from './assets/images/balanced_morning_window_1780054756807.png';
+import rainyCafe from './assets/images/real_rainy_cafe_1780056007513.png';
+import nightLibrary from './assets/images/real_night_study_1780056022466.png';
+import seasideStudy from './assets/images/balanced_seaside_study_1780054805083.png';
 
 export const MUSIC_TRACKS = [
   {
@@ -46,9 +46,9 @@ export const SCENES: Scene[] = [
   },
   {
     id: 'night_library',
-    title: '深夜图书馆',
-    description: '书架、台灯、低干预',
-    details: '翻页声与室内白噪音',
+    title: '深夜书房',
+    description: '窗边、台灯、专属空间',
+    details: '寂静白噪音',
     imageUrl: nightLibrary,
     audioUrl: 'https://archive.org/download/cathedral-library-ii-ambient-choir-wind-sound-of-burning-candles-asmr/CATHEDRAL%20LIBRARY%20II%20%20Ambient%20Choir%2C%20Wind%2C%20Sound%20Of%20Burning%20Candles%20%20ASMR.mp3'
   },

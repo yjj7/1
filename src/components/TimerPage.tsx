@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Scene, Task } from '../types';
 import { SCENES, MUSIC_TRACKS } from '../data';
 import { audioManager } from '../audioManager';
+import { CinematicBackground } from './CinematicBackground';
 
 interface TimerPageProps {
   sceneId: string;
@@ -176,16 +177,13 @@ export function TimerPage({
       {/* Background Image */}
       <motion.div 
         key={activeScene.id}
-        className="absolute inset-0 z-0 bg-cover bg-center origin-center"
-        style={{ backgroundImage: `url(${activeScene.imageUrl})` }}
-        initial={{ scale: 1.05, opacity: 0 }}
-        animate={{ scale: [1.05, 1.1, 1.05], opacity: 1 }}
-        transition={{ 
-          opacity: { duration: 1.5 },
-          scale: { duration: 40, repeat: Infinity, ease: "easeInOut" } 
-        }}
+        className="absolute inset-0 z-0 bg-black"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.5 }}
       >
-        <div className={`absolute inset-0 transition-opacity duration-1000 ${isImmersive ? 'bg-black/0' : 'bg-black/10'}`}></div>
+        <CinematicBackground imageUrl={activeScene.imageUrl} sceneId={activeScene.id} />
+        <div className={`absolute inset-0 transition-opacity duration-1000 z-10 ${isImmersive ? 'bg-black/0' : 'bg-black/10'}`}></div>
       </motion.div>
 
       <AnimatePresence>

@@ -5,6 +5,7 @@ export interface Scene {
   details: string;
   imageUrl: string;
   audioUrl?: string;
+  videoId?: string;
 }
 
 export interface Task {

@@ -1,7 +1,8 @@
 import React from 'react';
 import { BookOpen, Globe, ArrowRight, LogIn } from 'lucide-react';
 import { motion } from 'motion/react';
-import landingBg from '../assets/images/landing_bg_1779963525051.png';
+import landingBg from '../assets/images/premium_landing_bg_1780054955872.png';
+import { CinematicBackground } from './CinematicBackground';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -12,13 +13,13 @@ export function LandingPage({ onStart }: LandingPageProps) {
     <div className="relative min-h-screen w-full flex flex-col text-white overflow-hidden font-sans">
       {/* Background Image */}
       <motion.div 
-        className="absolute inset-0 z-0 bg-cover bg-center origin-center"
-        style={{ backgroundImage: `url(${landingBg})` }}
-        initial={{ scale: 1 }}
-        animate={{ scale: [1, 1.05, 1] }}
-        transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-0 z-0 bg-black"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.5 }}
       >
-        <div className="absolute inset-0 bg-black/20 mix-blend-multiply"></div>
+        <CinematicBackground imageUrl={landingBg} sceneId="landing" />
+        <div className="absolute inset-0 bg-black/20 mix-blend-multiply z-10"></div>
       </motion.div>
 
       {/* Header */}
