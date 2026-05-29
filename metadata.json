@@ -1,0 +1,6 @@
+{
+  "name": "StudyWithMe AI",
+  "description": "An immersive study timer application providing aesthetic scenes, music, and a Pomodoro clock to help users focus.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
