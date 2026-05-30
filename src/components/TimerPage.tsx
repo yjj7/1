@@ -5,6 +5,7 @@ import { Scene, Task } from '../types';
 import { SCENES, MUSIC_TRACKS } from '../data';
 import { audioManager } from '../audioManager';
 import { CinematicBackground } from './CinematicBackground';
+import { SceneClock } from './SceneClock';
 
 interface TimerPageProps {
   sceneId: string;
@@ -202,6 +203,8 @@ export function TimerPage({
         transition={{ duration: 1.5 }}
       >
         <CinematicBackground imageUrl={activeScene.imageUrl} sceneId={activeScene.id} />
+        {/* 实时时钟 - 每个场景都显示 */}
+        {<SceneClock />}
         <div className={`absolute inset-0 transition-opacity duration-1000 z-10 ${isImmersive ? 'bg-black/0' : 'bg-black/10'}`}></div>
       </motion.div>
       
