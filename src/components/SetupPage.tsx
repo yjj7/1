@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { BookOpen, Headphones, Volume2, ArrowRight, Upload, Music } from 'lucide-react';
-import { motion } from 'motion/react';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from '../data';
 
 interface SetupPageProps {
@@ -42,7 +41,6 @@ export function SetupPage({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // 释放旧的 blob URL
       if (customMusicUrl && customMusicUrl.startsWith('blob:')) {
         URL.revokeObjectURL(customMusicUrl);
       }
@@ -52,216 +50,215 @@ export function SetupPage({
     }
   };
 
-  const customFileName = customMusicUrl ? '已选择音乐文件' : '';
-
   return (
-    <div className="relative min-h-screen w-full flex flex-col text-white font-sans">
+    <div className="relative min-h-screen w-full flex flex-col text-white font-sans overflow-y-auto">
       {/* Dynamic Blurred Background */}
-      <div 
+      <div
         key={activeScene.id}
-        className="absolute inset-0 z-0 bg-cover bg-center"
+        className="fixed inset-0 z-0 bg-cover bg-center transition-all duration-700"
         style={{ backgroundImage: `url(${activeScene.imageUrl})` }}
       >
-        <div className="absolute inset-0 bg-black/10" />
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       </div>
 
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-6">
-        <div className="flex items-center space-x-3 group cursor-pointer">
-          <BookOpen className="w-6 h-6" />
-          <span className="text-xl font-medium tracking-wide">StudyWithMe AI</span>
+      <header className="relative z-10 flex items-center px-6 md:px-10 py-4 shrink-0">
+        <div className="flex items-center space-x-3">
+          <BookOpen className="w-5 h-5" />
+          <span className="text-lg font-medium tracking-wide">StudyWithMe AI</span>
         </div>
-        
-        <nav className="flex-1 flex justify-start ml-16 space-x-6 text-sm text-white/70">
+        <nav className="ml-10 flex space-x-5 text-sm text-white/60">
           <button onClick={onBack} className="hover:text-white transition-colors">首页</button>
-          <span className="text-white font-medium cursor-default">场景</span>
-          <span className="text-white/70 cursor-default">音乐</span>
-          <span className="text-white/70 cursor-default">计划</span>
+          <span className="text-white font-medium">场景</span>
         </nav>
       </header>
 
-      {/* Main Content Grid */}
-      <main className="relative z-10 flex-1 flex flex-col md:flex-row gap-8 px-8 md:px-24 py-8 overflow-hidden max-w-[1600px] mx-auto w-full">
-        
-        {/* Left Column: Scenes */}
-        <div className="flex-[2] flex flex-col">
-          <div className="mb-6">
-            <div className="text-xs font-mono tracking-widest text-white/50 mb-2">STEP 01</div>
-            <h2 className="text-3xl font-medium tracking-wide">选择你的学习场景</h2>
+      {/* Main Content */}
+      <main className="relative z-10 flex-1 flex flex-col lg:flex-row gap-6 px-4 md:px-10 pb-8 w-full max-w-[1400px] mx-auto">
+
+        {/* Left: Scene Selection */}
+        <section className="flex-[3] flex flex-col min-w-0">
+          <div className="mb-4">
+            <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 01</span>
+            <h2 className="text-2xl font-medium mt-1">选择学习场景</h2>
           </div>
 
-          <div className="flex-1 p-8 rounded-[2rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+          <div className="flex-1 p-4 md:p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               {SCENES.map((scene) => {
                 const isActive = scene.id === selectedSceneId;
                 return (
                   <button
                     key={scene.id}
                     onClick={() => onSelectScene(scene.id)}
-                    className={`relative text-left flex flex-col rounded-2xl overflow-hidden border transition-all duration-300 ${isActive ? 'border-white/60 bg-white/10 ring-4 ring-white/10' : 'border-white/10 bg-black/20 hover:bg-white/5'}`}
+                    className={`group relative text-left flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ${
+                      isActive
+                        ? 'border-white/50 bg-white/10 ring-2 ring-white/20 shadow-lg shadow-white/5'
+                        : 'border-white/10 bg-black/20 hover:bg-white/5 hover:border-white/20'
+                    }`}
                   >
-                    <div className="h-40 w-full overflow-hidden">
-                      <img 
-                        src={scene.imageUrl} 
+                    {/* 场景图 */}
+                    <div className="aspect-[16/10] w-full overflow-hidden relative">
+                      <img
+                        src={scene.imageUrl}
                         alt={scene.title}
-                        className={`w-full h-full object-cover transition-transform duration-700 ${isActive ? 'scale-105' : 'scale-100 opacity-70'}`}
+                        className={`w-full h-full object-cover transition-all duration-500 ${
+                          isActive ? 'scale-105 brightness-100' : 'scale-100 brightness-75 group-hover:brightness-90'
+                        }`}
                       />
+                      {/* 选中标记 */}
+                      {isActive && (
+                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
-                    <div className="p-5">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-xl font-medium">{scene.title}</h3>
-                        <span className="text-[10px] font-mono tracking-widest text-white/40 uppercase">SCENE</span>
-                      </div>
-                      <p className="text-sm text-white/60 mb-1">{scene.description}</p>
-                      <p className="text-sm text-white/40">{scene.details}</p>
+                    {/* 信息 */}
+                    <div className="p-3">
+                      <h3 className="text-sm font-medium mb-0.5 truncate">{scene.title}</h3>
+                      <p className="text-[11px] text-white/50 truncate">{scene.description}</p>
                     </div>
                   </button>
                 );
               })}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Right Column: Audio & Timer */}
-        <div className="flex-1 flex flex-col space-y-8">
-          
-          {/* Audio Setup */}
-          <div className="flex flex-col">
-            <div className="mb-6">
-              <div className="text-xs font-mono tracking-widest text-white/50 mb-2">STEP 02</div>
-              <h2 className="text-3xl font-medium tracking-wide">设置声音氛围</h2>
-            </div>
-            
-            <div className="flex flex-col gap-4">
-              <div className="p-6 rounded-[1.5rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Headphones className="w-4 h-4 text-white/70" />
-                  <span className="text-base font-medium">音乐</span>
-                </div>
-                <div className="mb-3">
-                  <select 
-                    value={selectedMusicId}
-                    onChange={(e) => onSelectMusic(e.target.value)}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-sm text-white/80 outline-none cursor-pointer"
-                  >
-                    {MUSIC_TRACKS.map(m => (
-                      <option key={m.id} value={m.id} className="text-black bg-white/90">{m.title}</option>
-                    ))}
-                  </select>
-                </div>
+        {/* Right: Audio + Timer */}
+        <aside className="flex-[1] flex flex-col gap-5 lg:min-w-[280px] lg:max-w-[320px]">
 
-                {/* 自定义音乐上传 */}
+          {/* Audio */}
+          <div>
+            <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 02</span>
+            <h2 className="text-xl font-medium mt-1 mb-3">声音氛围</h2>
+
+            <div className="space-y-3">
+              {/* 音乐选择 */}
+              <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
+                <div className="flex items-center space-x-2 mb-3">
+                  <Headphones className="w-4 h-4 text-white/60" />
+                  <span className="text-sm font-medium">音乐</span>
+                </div>
+                <select
+                  value={selectedMusicId}
+                  onChange={(e) => onSelectMusic(e.target.value)}
+                  className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 outline-none cursor-pointer"
+                >
+                  {MUSIC_TRACKS.map(m => (
+                    <option key={m.id} value={m.id} className="text-black">{m.title}</option>
+                  ))}
+                </select>
+
                 {selectedMusicId === 'custom' && (
-                  <div className="mb-3">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="audio/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
+                  <div className="mt-3">
+                    <input ref={fileInputRef} type="file" accept="audio/*" onChange={handleFileUpload} className="hidden" />
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl border border-dashed border-white/30 hover:border-white/60 hover:bg-white/5 transition-all text-sm text-white/70 hover:text-white"
+                      className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg border border-dashed border-white/25 hover:border-white/50 hover:bg-white/5 transition-all text-xs text-white/60 hover:text-white"
                     >
-                      <Upload className="w-4 h-4" />
-                      <span>{customFileName || '选择本地音乐文件 (MP3/WAV/OGG)'}</span>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{customMusicUrl ? '已选择文件' : '上传本地音乐'}</span>
                     </button>
                     {customMusicUrl && (
-                      <div className="flex items-center space-x-2 mt-2 text-xs text-green-400">
+                      <div className="flex items-center space-x-1.5 mt-2 text-[11px] text-green-400">
                         <Music className="w-3 h-3" />
-                        <span>音乐已就绪</span>
+                        <span>就绪</span>
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="flex-1 h-3 flex items-center relative group">
-                  <div className="w-full h-1.5 bg-white/10 rounded-full relative pointer-events-none">
-                    <div className="h-full bg-white/80 transition-all" style={{ width: `${musicVolume}%` }}></div>
-                    <div className="w-3 h-3 bg-white rounded-full absolute -top-[3px] -ml-1.5 shadow transition-all" style={{ left: `${musicVolume}%` }}></div>
+                <div className="mt-3 relative h-6 flex items-center">
+                  <div className="w-full h-1 bg-white/15 rounded-full relative">
+                    <div className="h-full bg-white/70 rounded-full transition-all" style={{ width: `${musicVolume}%` }} />
+                    <div className="w-3 h-3 bg-white rounded-full absolute -top-1 shadow transition-all" style={{ left: `${musicVolume}%`, marginLeft: '-6px' }} />
                   </div>
-                  <input 
-                    type="range" 
-                    min="0" max="100" 
-                    value={musicVolume}
+                  <input
+                    type="range" min="0" max="100" value={musicVolume}
                     onChange={(e) => onMusicVolumeChange(Number(e.target.value))}
-                    className="w-full absolute opacity-0 cursor-pointer h-full z-10 top-0 left-0"
+                    className="w-full absolute opacity-0 cursor-pointer h-full"
                   />
                 </div>
               </div>
 
-              <div className="p-6 rounded-[1.5rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Volume2 className="w-4 h-4 text-white/70" />
-                  <span className="text-base font-medium">背景音</span>
+              {/* 背景音 */}
+              <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
+                <div className="flex items-center space-x-2 mb-1">
+                  <Volume2 className="w-4 h-4 text-white/60" />
+                  <span className="text-sm font-medium">背景音</span>
                 </div>
-                <p className="text-xs text-white/50 mb-4">根据当前场景自动匹配环境声</p>
-                <div className="flex-1 h-3 flex items-center relative group">
-                  <div className="w-full h-1.5 bg-white/10 rounded-full relative pointer-events-none">
-                    <div className="h-full bg-white/80 transition-all" style={{ width: `${bgVolume}%` }}></div>
-                    <div className="w-3 h-3 bg-white rounded-full absolute -top-[3px] -ml-1.5 shadow transition-all" style={{ left: `${bgVolume}%` }}></div>
+                <p className="text-[11px] text-white/40 mb-3">根据场景自动匹配</p>
+                <div className="relative h-6 flex items-center">
+                  <div className="w-full h-1 bg-white/15 rounded-full relative">
+                    <div className="h-full bg-white/70 rounded-full transition-all" style={{ width: `${bgVolume}%` }} />
+                    <div className="w-3 h-3 bg-white rounded-full absolute -top-1 shadow transition-all" style={{ left: `${bgVolume}%`, marginLeft: '-6px' }} />
                   </div>
-                  <input 
-                    type="range" 
-                    min="0" max="100" 
-                    value={bgVolume}
+                  <input
+                    type="range" min="0" max="100" value={bgVolume}
                     onChange={(e) => onBgVolumeChange(Number(e.target.value))}
-                    className="w-full absolute opacity-0 cursor-pointer h-full z-10 top-0 left-0"
+                    className="w-full absolute opacity-0 cursor-pointer h-full"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Timer Setup */}
-          <div className="flex flex-col flex-1">
-            <div className="mb-6">
-              <div className="text-xs font-mono tracking-widest text-white/50 mb-2">STEP 03</div>
-              <h2 className="text-3xl font-medium tracking-wide">设置番茄钟</h2>
-            </div>
-            
-            <div className="p-8 rounded-[2rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl flex flex-col justify-between flex-1">
-              <div className="grid grid-cols-2 gap-4 mb-8">
+          {/* Timer */}
+          <div className="flex-1 flex flex-col">
+            <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 03</span>
+            <h2 className="text-xl font-medium mt-1 mb-3">番茄钟</h2>
+
+            <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10 flex-1 flex flex-col">
+              <div className="grid grid-cols-2 gap-2 mb-4">
                 {DURATIONS.map(dur => (
                   <button
                     key={dur}
                     onClick={() => {
-                        onTimerDurationChange(dur);
-                        const input = document.getElementById('custom-time') as HTMLInputElement;
-                        if(input) input.value = '';
+                      onTimerDurationChange(dur);
+                      const el = document.getElementById('custom-time') as HTMLInputElement;
+                      if (el) el.value = '';
                     }}
-                    className={`py-4 rounded-xl border transition-all ${timerDuration === dur ? 'border-white bg-white/20' : 'border-white/20 bg-transparent hover:bg-white/10'}`}
+                    className={`py-3 rounded-lg border text-sm transition-all ${
+                      timerDuration === dur
+                        ? 'border-white bg-white/20 font-medium'
+                        : 'border-white/15 hover:bg-white/10'
+                    }`}
                   >
-                    <span>{dur} 分钟</span>
+                    {dur} 分钟
                   </button>
                 ))}
-                <div className={`relative flex items-center rounded-xl border transition-all overflow-hidden ${!DURATIONS.includes(timerDuration) ? 'bg-white/20 border-white' : 'border-white/20 hover:bg-white/10'}`}>
-                  <input 
+                <div className={`relative flex items-center rounded-lg border overflow-hidden ${
+                  !DURATIONS.includes(timerDuration) ? 'bg-white/15 border-white' : 'border-white/15'
+                }`}>
+                  <input
                     id="custom-time"
-                    type="number" 
-                    placeholder="自定义" 
-                    className="w-full bg-transparent text-center outline-none p-4 placeholder:text-white/30 text-white"
+                    type="number"
+                    placeholder="自定义"
+                    className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30"
                     onChange={(e) => {
                       const val = Number(e.target.value);
                       if (val > 0) onTimerDurationChange(val);
                     }}
                   />
-                  <span className="absolute right-4 text-white/50 pointer-events-none">分钟</span>
+                  <span className="absolute right-3 text-xs text-white/40 pointer-events-none">min</span>
                 </div>
               </div>
-              
-              <button 
-                onClick={onEnter}
-                className="w-full py-4 rounded-full border border-white/40 bg-white text-black font-medium text-lg hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 group"
-              >
-                <span>进入自习室</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+
+              <div className="mt-auto">
+                <button
+                  onClick={onEnter}
+                  className="w-full py-3.5 rounded-full bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 group"
+                >
+                  <span>进入自习室</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
             </div>
           </div>
-
-        </div>
+        </aside>
       </main>
     </div>
   );
