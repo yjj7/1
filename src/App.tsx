@@ -3,11 +3,17 @@ import { AppState, Task } from './types';
 import { LandingPage } from './components/LandingPage';
 import { SetupPage } from './components/SetupPage';
 import { TimerPage } from './components/TimerPage';
+import { LoadingScreen } from './components/LoadingScreen';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from './data';
 import { audioManager } from './audioManager';
 
+
 export default function App() {
   const [appState, setAppState] = useState<AppState>('landing');
+  const [loadingSceneId, setLoadingSceneId] = useState<string>('');
+  const [loadingMusicId, setLoadingMusicId] = useState<string>('');
+  const [loadingMusicVolume, setLoadingMusicVolume] = useState<number>(50);
+  const [loadingBgVolume, setLoadingBgVolume] = useState<number>(30);
   
   const savedState = (() => {
     try {
@@ -57,20 +63,36 @@ export default function App() {
           onBgVolumeChange={setBgVolume}
           timerDuration={timerDuration}
           onTimerDurationChange={setTimerDuration}
+          onBack={() => setAppState('landing')}
           onEnter={() => {
+            // 关键：在用户点击时机解锁浏览器音频（必须用户手势）
+            try {
+              const silent = new Audio();
+              silent.play().then(() => silent.pause()).catch(() => {});
+            } catch {}
             audioManager.init();
-            const musicTrack = MUSIC_TRACKS.find(m => m.id === selectedMusicId);
-            if (musicTrack) audioManager.setMusic(musicTrack.audioUrl);
-            const scene = SCENES.find(s => s.id === selectedSceneId);
-            if (scene && scene.audioUrl) audioManager.setBg(scene.audioUrl);
-            audioManager.setMusicVolume(musicVolume / 100);
-            audioManager.setBgVolume(bgVolume / 100);
-            audioManager.play();
-            setAppState('timer');
+            setLoadingSceneId(selectedSceneId);
+            setLoadingMusicId(selectedMusicId);
+            setLoadingMusicVolume(musicVolume);
+            setLoadingBgVolume(bgVolume);
+            setAppState('loading');
           }}
         />
       )}
       
+      {appState === 'loading' && (
+        <LoadingScreen
+          sceneId={loadingSceneId}
+          musicId={loadingMusicId}
+          musicVolume={loadingMusicVolume}
+          bgVolume={loadingBgVolume}
+          onReady={() => {
+            // Audio is already init-ed inside LoadingScreen
+            setAppState('timer');
+          }}
+        />
+      )}
+
       {appState === 'timer' && (
         <TimerPage
           sceneId={selectedSceneId}
@@ -85,6 +107,7 @@ export default function App() {
             audioManager.stop();
             setAppState('landing');
           }}
+          key={`${selectedSceneId}-${selectedMusicId}`}
           tasks={tasks}
           onTasksChange={setTasks}
           pomodoroCount={pomodoroCount}

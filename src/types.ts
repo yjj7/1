@@ -14,4 +14,4 @@ export interface Task {
   completed: boolean;
 }
 
-export type AppState = 'landing' | 'setup' | 'timer';
+export type AppState = 'landing' | 'setup' | 'loading' | 'timer';

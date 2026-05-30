@@ -3,28 +3,47 @@ import morningWindow from './assets/images/balanced_morning_window_1780054756807
 import rainyCafe from './assets/images/real_rainy_cafe_1780056007513.png';
 import nightLibrary from './assets/images/real_night_study_1780056022466.png';
 import seasideStudy from './assets/images/balanced_seaside_study_1780054805083.png';
+import nightHomeOffice from './assets/images/night_home_office_1780054791759.png';
+
+// 音频标识符：synth:xxx 格式，由 audioManager 通过 string matching 匹配合成器
+// 所有音频均由 Web Audio API 实时合成，不依赖任何外部 URL
 
 export const MUSIC_TRACKS = [
   {
-    id: 'gymnopedie',
-    title: 'Gymnopédie No. 1 - Satie',
-    audioUrl: 'https://archive.org/download/gymnopedie-no-1-by-kevin-macleod/gymnopedie-no-1-by-kevin-macleod.mp3'
+    id: 'gymnopédie',
+    title: 'Gymnopédie No.1 - Satie',
+    audioUrl: 'synth:gymnopedie'
   },
   {
     id: 'clair_de_lune',
     title: 'Clair de Lune - Debussy',
-    audioUrl: 'https://archive.org/download/debussy-clair-de-lune/Debussy%20-%20Clair%20de%20Lune.mp3'
+    audioUrl: 'synth:clair'
   },
   {
     id: 'lofi_calm',
     title: 'Lofi - Calm Weave',
-    audioUrl: 'https://archive.org/download/avalune-weightless-ambient-lofi-for-deep-focus-and-study/Calm%20Electronic%20Weave.mp3'
+    audioUrl: 'synth:lofi'
+  },
+  {
+    id: 'focus_piano',
+    title: '专注钢琴',
+    audioUrl: 'synth:piano'
+  },
+  {
+    id: 'nature_white_noise',
+    title: '自然白噪音',
+    audioUrl: 'synth:nature'
+  },
+  {
+    id: 'cafe_ambience',
+    title: '咖啡厅环境音',
+    audioUrl: 'synth:cafe'
   },
   {
     id: 'none',
-    title: '无音乐 (Mute Music)',
+    title: '无音乐 (Mute)',
     audioUrl: ''
-  }
+  },
 ];
 
 export const SCENES: Scene[] = [
@@ -32,25 +51,25 @@ export const SCENES: Scene[] = [
     id: 'morning_window',
     title: '清晨窗边',
     description: '晨光、植物、安静书桌',
-    details: '轻雨与窗外白鹭',
+    details: '鸟鸣与微风',
     imageUrl: morningWindow,
-    audioUrl: 'https://archive.org/download/EarlyMorningMayBirdsSinging/vogels-mei2008-5uursochtends.mp3'
+    audioUrl: 'synth:bg:birds'
   },
   {
     id: 'rainy_cafe',
     title: '雨天咖啡店',
     description: '暖灯、咖啡、低声环境',
-    details: '雨声与隐约环境',
+    details: '雨声与隐约人声',
     imageUrl: rainyCafe,
-    audioUrl: 'https://archive.org/download/rain-and-storm-19591/rain-and-storm-19591.mp3'
+    audioUrl: 'synth:bg:rain'
   },
   {
     id: 'night_library',
     title: '深夜书房',
     description: '窗边、台灯、专属空间',
-    details: '寂静白噪音',
+    details: '寂静与翻书声',
     imageUrl: nightLibrary,
-    audioUrl: 'https://archive.org/download/cathedral-library-ii-ambient-choir-wind-sound-of-burning-candles-asmr/CATHEDRAL%20LIBRARY%20II%20%20Ambient%20Choir%2C%20Wind%2C%20Sound%20Of%20Burning%20Candles%20%20ASMR.mp3'
+    audioUrl: 'synth:bg:silence'
   },
   {
     id: 'seaside_study',
@@ -58,8 +77,32 @@ export const SCENES: Scene[] = [
     description: '海风、蓝光、开阔视野',
     details: '海浪与微风',
     imageUrl: seasideStudy,
-    audioUrl: 'https://archive.org/download/ocean-waves-112906/ocean-waves-112906.mp3'
-  }
+    audioUrl: 'synth:bg:ocean'
+  },
+  {
+    id: 'deep_night_desk',
+    title: '深夜书桌',
+    description: '台灯、笔记本、安静深夜',
+    details: '键盘声与翻书声',
+    imageUrl: nightHomeOffice,
+    audioUrl: 'synth:bg:keyboard'
+  },
+  {
+    id: 'forest_cabin',
+    title: '森林小屋',
+    description: '木屋、壁炉、森林气息',
+    details: '柴火燃烧与鸟鸣',
+    imageUrl: seasideStudy, // TODO: 需替换为森林/木屋场景图
+    audioUrl: 'synth:bg:forest'
+  },
+  {
+    id: 'city_skyline',
+    title: '城市天际线',
+    description: '高楼、霓虹、城市夜景',
+    details: '远处车流与城市脉搏',
+    imageUrl: rainyCafe, // TODO: 需替换为城市天际线场景图
+    audioUrl: 'synth:bg:city'
+  },
 ];
 
 export const DURATIONS = [25, 45, 50, 90];

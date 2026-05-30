@@ -15,6 +15,7 @@ interface SetupPageProps {
   onBgVolumeChange: (val: number) => void;
   timerDuration: number;
   onTimerDurationChange: (val: number) => void;
+  onBack: () => void;
   onEnter: () => void;
 }
 
@@ -29,6 +30,7 @@ export function SetupPage({
   onBgVolumeChange,
   timerDuration,
   onTimerDurationChange,
+  onBack,
   onEnter,
 }: SetupPageProps) {
   const activeScene = SCENES.find(s => s.id === selectedSceneId) || SCENES[0];
@@ -36,19 +38,13 @@ export function SetupPage({
   return (
     <div className="relative min-h-screen w-full flex flex-col text-white font-sans">
       {/* Dynamic Blurred Background */}
-      <motion.div 
+      <div 
         key={activeScene.id}
-        className="absolute inset-0 z-0 bg-cover bg-center origin-center"
+        className="absolute inset-0 z-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${activeScene.imageUrl})` }}
-        initial={{ scale: 1, opacity: 0.5 }}
-        animate={{ scale: [1, 1.03, 1], opacity: 1 }}
-        transition={{ 
-          opacity: { duration: 1 },
-          scale: { duration: 25, repeat: Infinity, ease: "easeInOut" }
-        }}
       >
-        <div className="absolute inset-0 bg-black/10"></div>
-      </motion.div>
+        <div className="absolute inset-0 bg-black/10" />
+      </div>
 
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-8 py-6">
@@ -58,7 +54,7 @@ export function SetupPage({
         </div>
         
         <nav className="flex-1 flex justify-start ml-16 space-x-6 text-sm text-white/70">
-          <button onClick={() => window.location.reload()} className="hover:text-white transition-colors">首页</button>
+          <button onClick={onBack} className="hover:text-white transition-colors">首页</button>
           <span className="text-white font-medium cursor-default">场景</span>
           <span className="text-white/70 cursor-default">音乐</span>
           <span className="text-white/70 cursor-default">计划</span>
@@ -127,7 +123,7 @@ export function SetupPage({
                   <select 
                     value={selectedMusicId}
                     onChange={(e) => onSelectMusic(e.target.value)}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-sm text-white/80 outline-none"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-sm text-white/80 outline-none cursor-pointer"
                   >
                     {MUSIC_TRACKS.map(m => (
                       <option key={m.id} value={m.id} className="text-black bg-white/90">{m.title}</option>

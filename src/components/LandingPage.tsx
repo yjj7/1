@@ -29,10 +29,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
           <span className="text-xl font-medium tracking-wide">StudyWithMe AI</span>
         </div>
         
-        <nav className="hidden md:flex items-center space-x-8 text-sm text-white/80">
-          <button onClick={onStart} className="hover:text-white transition-colors">场景</button>
-          <button onClick={onStart} className="hover:text-white transition-colors">音乐</button>
-          <button onClick={onStart} className="hover:text-white transition-colors">计划</button>
+        <nav className="hidden md:flex items-center space-x-8 text-sm text-white/80" role="navigation" aria-label="主导航">
+          <button onClick={onStart} className="hover:text-white transition-colors" aria-label="开始学习">开始学习</button>
         </nav>
 
         <div className="flex items-center space-x-4">
@@ -68,7 +66,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 py-8 px-8 md:px-24 border-t border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-t from-black/60 to-transparent">
+      <footer className="relative z-10 py-8 px-8 md:px-24 border-t border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-t from-black/60 to-transparent" role="contentinfo">
         <div className="mb-6 md:mb-0">
           <div className="flex items-center space-x-3 mb-3">
             <BookOpen className="w-5 h-5 text-white/80" />
@@ -82,18 +80,18 @@ export function LandingPage({ onStart }: LandingPageProps) {
         <div className="flex gap-16 text-sm">
           <div className="flex flex-col space-y-3 text-white/60">
             <span className="text-white font-medium mb-1">产品</span>
-            <a href="#" className="hover:text-white transition-colors">场景</a>
-            <a href="#" className="hover:text-white transition-colors">音乐</a>
+            <span className="cursor-default">场景</span>
+            <span className="cursor-default">音乐</span>
           </div>
           <div className="flex flex-col space-y-3 text-white/60">
             <span className="text-white font-medium mb-1">资源</span>
-            <a href="#" className="hover:text-white transition-colors">使用指南</a>
-            <a href="#" className="hover:text-white transition-colors">学习方法</a>
+            <span className="cursor-default">使用指南</span>
+            <span className="cursor-default">学习方法</span>
           </div>
           <div className="flex flex-col space-y-3 text-white/60">
             <span className="text-white font-medium mb-1">关于我们</span>
-            <a href="#" className="hover:text-white transition-colors">关于 StudyWithMe AI</a>
-            <a href="#" className="hover:text-white transition-colors">隐私/协议</a>
+            <span className="cursor-default">关于 StudyWithMe AI</span>
+            <span className="cursor-default">隐私/协议</span>
           </div>
         </div>
       </footer>
