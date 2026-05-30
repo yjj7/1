@@ -61,7 +61,7 @@ export function LoadingScreen({ sceneId, musicId, musicVolume, bgVolume, onReady
       setPhase('ready');
     }
 
-    // 兜底：8 秒后强制进入（archive.org 在国内可能很慢）
+    // 兜底：8 秒后强制进入（防止网络慢或音频合成延迟）
     const t = setTimeout(() => {
       if (!done) {
         console.warn('[LoadingScreen] Audio load timeout, proceeding anyway');

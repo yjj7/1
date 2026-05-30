@@ -148,6 +148,20 @@ export function TimerPage({
   };
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsRunning(prev => !prev);
+      } else if (e.code === 'Escape' && isImmersive) {
+        toggleImmersive(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isImmersive]);
+
+  useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (isRunning && timeLeft > 0) {
       interval = setInterval(() => {
@@ -204,10 +218,8 @@ export function TimerPage({
               </div>
             </div>
 
-            <nav className="hidden md:flex items-center space-x-8 text-sm text-white/80">
-              <span className="hover:text-white cursor-pointer transition-colors">场景</span>
-              <span className="hover:text-white cursor-pointer transition-colors">音乐</span>
-              <span className="hover:text-white cursor-pointer transition-colors">计划</span>
+            <nav className="hidden md:flex items-center space-x-4 text-sm text-white/60">
+              <span className="font-medium text-white/80">{activeScene.title}</span>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -231,18 +243,13 @@ export function TimerPage({
         )}
       </AnimatePresence>
 
-      {!isImmersive && (
-        <div className="absolute top-24 right-8 z-10 text-right">
-          <span className="text-sm font-medium text-white/70 tracking-widest">{activeScene.title}</span>
-        </div>
-      )}
+
 
       {/* Main Container for Widgets */}
       <main className="relative z-10 flex-1 w-full h-full p-8 flex flex-col justify-end pointer-events-none">
 
         {/* Timer Widget - Always visible, but moves slightly down left */}
         <motion.div
-          layout
           className="pointer-events-auto absolute left-8 bottom-32 md:left-24 md:bottom-40 p-6 rounded-[2rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl w-72"
         >
           <div className="flex items-center justify-between mb-4">
@@ -428,7 +435,7 @@ export function TimerPage({
               </p>
               <div className="flex flex-col space-y-3">
                 <button
-                  onClick={() => { setTimeLeft(durationMinutes * 60); setIsRunning(true); }}
+                  onClick={() => { setTimeLeft(durationMinutes * 60); setIsRunning(true); playDing(); }}
                   className="w-full py-4 rounded-full bg-white text-black hover:bg-white/90 transition-colors font-medium text-sm"
                 >
                   开始下一个
