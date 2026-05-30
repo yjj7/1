@@ -1,4 +1,4 @@
-// Web Audio API 内建音频合成——不依赖任何外部 URL
+// Web Audio API 内建音频合成 + HTMLAudioElement 支持（自定义上传/外部URL）
 
 interface SetAudioOpts {
   onLoad?: () => void;
@@ -32,9 +32,9 @@ class AudioManager {
   bgSrc: string = '';
   musicSrc: string = '';
   private _musicInterval: ReturnType<typeof setInterval> | null = null;
+  private _musicAudioEl: HTMLAudioElement | null = null;
 
   init() {
-    // 初始化 AudioContext（实际解锁依赖用户手势，在 App.tsx 中处理）
     getCtx();
   }
 
@@ -49,7 +49,15 @@ class AudioManager {
       opts?.onLoad?.();
       return;
     }
-    setTimeout(() => opts?.onLoad?.(), 10);
+    // blob: 和 http: URL 需要预加载
+    if (src.startsWith('blob:') || src.startsWith('http')) {
+      const audio = new Audio(src);
+      audio.addEventListener('canplaythrough', () => opts?.onLoad?.(), { once: true });
+      audio.addEventListener('error', () => opts?.onError?.(), { once: true });
+      audio.load();
+    } else {
+      setTimeout(() => opts?.onLoad?.(), 10);
+    }
   }
 
   setBg(src: string, opts?: SetAudioOpts) {
@@ -83,6 +91,7 @@ class AudioManager {
 
   setMusicVolume(v: number) {
     this.musicVol = v;
+    if (this._musicAudioEl) this._musicAudioEl.volume = v;
     if (musicGain) musicGain.gain.setTargetAtTime(v, getCtx().currentTime, 0.1);
   }
 
@@ -91,12 +100,28 @@ class AudioManager {
     if (bgGain) bgGain.gain.setTargetAtTime(v, getCtx().currentTime, 0.1);
   }
 
-  // ---- Music Synthesizer ----
+  // ---- Music Player ----
   private playMusic() {
     if (musicRunning) return;
     if (!this.musicSrc) return;
-    const ctx = getCtx();
 
+    // 真实音频文件（blob: 或 http:）
+    if (this.musicSrc.startsWith('blob:') || this.musicSrc.startsWith('http')) {
+      musicRunning = true;
+      if (!this._musicAudioEl || this._musicAudioEl.src !== this.musicSrc) {
+        this._musicAudioEl = new Audio(this.musicSrc);
+        this._musicAudioEl.loop = true;
+        this._musicAudioEl.volume = this.musicVol;
+      }
+      this._musicAudioEl.play().catch(e => {
+        console.warn('Music play failed:', e);
+        musicRunning = false;
+      });
+      return;
+    }
+
+    // 合成音乐
+    const ctx = getCtx();
     musicGain = ctx.createGain();
     musicGain.gain.value = this.musicVol;
     musicGain.connect(ctx.destination);
@@ -106,6 +131,10 @@ class AudioManager {
       : this.musicSrc.includes('cafe') ? 'cafe'
       : this.musicSrc.includes('nature') ? 'nature'
       : this.musicSrc.includes('piano') || this.musicSrc.includes('focus') ? 'piano'
+      : this.musicSrc.includes('jazz') ? 'jazz'
+      : this.musicSrc.includes('ambient') ? 'ambient'
+      : this.musicSrc.includes('guitar') ? 'guitar'
+      : this.musicSrc.includes('meditation') ? 'meditation'
       : this.musicSrc.includes('clair') || this.musicSrc.includes('debussy') ? 'clair'
       : this.musicSrc.includes('gymnop') || this.musicSrc.includes('satie') ? 'gymnopedie'
       : 'none';
@@ -120,6 +149,10 @@ class AudioManager {
       piano:      [[0, 2, 4, 5, 3, 1, 2, 0],  [1, 1.5, 1, 1, 1, 1.5, 1, 1]],
       cafe:       [[0, 4, 3, 1, 2, 5, 4, 0],  [1.5, 1, 1, 1.5, 1, 1, 1, 1.5]],
       nature:     [[0, 2, 0, 4, 0, 2, 0, 5],  [2, 1, 2, 1, 2, 1, 2, 1]],
+      jazz:       [[0, 4, 2, 5, 1, 3, 0, 6],  [1.5, 0.75, 1.5, 0.75, 1, 1, 1.5, 0.75]],
+      ambient:    [[0, 0, 2, 2, 4, 4, 2, 0],  [3, 2, 3, 2, 2, 3, 2, 3]],
+      guitar:     [[0, 2, 4, 2, 0, 3, 5, 3],  [1, 0.5, 1, 0.5, 1, 0.5, 1, 0.5]],
+      meditation: [[0, 0, 0, 0, 2, 2, 0, 0],  [4, 3, 4, 3, 4, 3, 4, 3]],
     };
 
     const [notes, durations] = sequences[musicType] || sequences.piano;
@@ -134,8 +167,9 @@ class AudioManager {
       const freq = pentatonic[notes[noteIdx] % pentatonic.length];
       const dur = durations[noteIdx] * 0.6;
 
+      // 主音
       const osc1 = ctx.createOscillator();
-      osc1.type = 'sine';
+      osc1.type = musicType === 'jazz' ? 'triangle' : musicType === 'ambient' ? 'sine' : 'sine';
       osc1.frequency.value = freq;
       const env1 = ctx.createGain();
       env1.gain.setValueAtTime(0, ctx.currentTime);
@@ -147,12 +181,13 @@ class AudioManager {
       osc1.stop(ctx.currentTime + dur + 0.1);
       activeNodes.push(osc1);
 
+      // 泛音
       const osc2 = ctx.createOscillator();
       osc2.type = 'sine';
-      osc2.frequency.value = freq * 1.5;
+      osc2.frequency.value = musicType === 'jazz' ? freq * 1.414 : freq * 1.5;
       const env2 = ctx.createGain();
       env2.gain.setValueAtTime(0, ctx.currentTime);
-      env2.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.03);
+      env2.gain.linearRampToValueAtTime(musicType === 'ambient' ? 0.08 : 0.05, ctx.currentTime + 0.03);
       env2.gain.linearRampToValueAtTime(0, ctx.currentTime + dur * 0.7);
       osc2.connect(env2);
       env2.connect(musicGain);
@@ -199,13 +234,17 @@ class AudioManager {
       case 'keyboard': this._playKeyboard(ctx, bgGain); break;
       case 'forest': this._playForest(ctx, bgGain); break;
       case 'city': this._playCityDrone(ctx, bgGain); break;
-      case 'silence': /* 无音频输出 */ break;
+      case 'silence': break;
     }
   }
 
   private stopMusic() {
     musicRunning = false;
     if (this._musicInterval) { clearInterval(this._musicInterval); this._musicInterval = null; }
+    if (this._musicAudioEl) {
+      this._musicAudioEl.pause();
+      this._musicAudioEl.currentTime = 0;
+    }
     if (musicGain) {
       musicGain.disconnect();
       musicGain = null;

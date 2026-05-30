@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a1628"/>
+      <stop offset="40%" stop-color="#1a2744"/>
+      <stop offset="100%" stop-color="#2d4a3e"/>
+    </linearGradient>
+    <linearGradient id="fire" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#ff6600"/>
+      <stop offset="50%" stop-color="#ff9933"/>
+      <stop offset="100%" stop-color="#ffcc66"/>
+    </linearGradient>
+    <radialGradient id="windowGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffdd88" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#ff9933" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e8e0d0" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#e8e0d0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur1"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="blur2"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="blur3"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+
+  <!-- Stars -->
+  <g opacity="0.6">
+    <circle cx="120" cy="80" r="1.2" fill="#fff"/>
+    <circle cx="340" cy="150" r="0.8" fill="#fff"/>
+    <circle cx="560" cy="60" r="1" fill="#fff"/>
+    <circle cx="780" cy="120" r="1.5" fill="#fff"/>
+    <circle cx="950" cy="45" r="0.7" fill="#fff"/>
+    <circle cx="1150" cy="90" r="1.3" fill="#fff"/>
+    <circle cx="1350" cy="160" r="0.9" fill="#fff"/>
+    <circle cx="1550" cy="70" r="1.1" fill="#fff"/>
+    <circle cx="1750" cy="130" r="0.8" fill="#fff"/>
+    <circle cx="200" cy="200" r="0.6" fill="#fff"/>
+    <circle cx="450" cy="250" r="1" fill="#fff"/>
+    <circle cx="680" cy="180" r="0.7" fill="#fff"/>
+    <circle cx="1050" cy="220" r="1.2" fill="#fff"/>
+    <circle cx="1280" cy="280" r="0.5" fill="#fff"/>
+    <circle cx="1480" cy="200" r="0.9" fill="#fff"/>
+    <circle cx="1680" cy="250" r="1.1" fill="#fff"/>
+    <circle cx="300" cy="320" r="0.6" fill="#fff"/>
+    <circle cx="850" cy="300" r="0.8" fill="#fff"/>
+    <circle cx="1600" cy="340" r="0.7" fill="#fff"/>
+  </g>
+
+  <!-- Moon -->
+  <circle cx="1600" cy="180" r="80" fill="url(#moonGlow)" filter="url(#blur3)"/>
+  <circle cx="1600" cy="180" r="35" fill="#e8e0d0" opacity="0.85"/>
+
+  <!-- Distant mountains -->
+  <path d="M0 650 L200 480 L400 580 L600 420 L800 520 L1000 400 L1200 500 L1400 440 L1600 520 L1800 460 L1920 550 L1920 700 L0 700Z" fill="#1a3028" opacity="0.7"/>
+  <path d="M0 700 L150 560 L350 640 L550 500 L750 580 L950 480 L1150 560 L1350 500 L1550 570 L1750 510 L1920 600 L1920 750 L0 750Z" fill="#1e3a30" opacity="0.8"/>
+
+  <!-- Forest trees - far layer -->
+  <g opacity="0.5">
+    <polygon points="80,700 100,520 120,700" fill="#1a3828"/>
+    <polygon points="160,700 185,500 210,700" fill="#1c3c2a"/>
+    <polygon points="280,700 305,530 330,700" fill="#1a3828"/>
+    <polygon points="400,700 420,510 440,700" fill="#1e4030"/>
+    <polygon points="520,700 545,540 570,700" fill="#1a3828"/>
+    <polygon points="1350,700 1375,520 1400,700" fill="#1c3c2a"/>
+    <polygon points="1470,700 1495,490 1520,700" fill="#1a3828"/>
+    <polygon points="1590,700 1615,530 1640,700" fill="#1e4030"/>
+    <polygon points="1710,700 1735,510 1760,700" fill="#1a3828"/>
+    <polygon points="1830,700 1850,540 1870,700" fill="#1c3c2a"/>
+  </g>
+
+  <!-- Forest trees - mid layer -->
+  <g opacity="0.7">
+    <polygon points="40,750 70,550 100,750" fill="#1e4432"/>
+    <polygon points="180,750 210,530 240,750" fill="#224a36"/>
+    <polygon points="320,750 350,560 380,750" fill="#1e4432"/>
+    <polygon points="460,750 490,540 520,750" fill="#264e3a"/>
+    <polygon points="1280,750 1310,550 1340,750" fill="#224a36"/>
+    <polygon points="1420,750 1450,520 1480,750" fill="#1e4432"/>
+    <polygon points="1560,750 1590,560 1620,750" fill="#264e3a"/>
+    <polygon points="1700,750 1730,540 1760,750" fill="#1e4432"/>
+    <polygon points="1840,750 1860,570 1880,750" fill="#224a36"/>
+  </g>
+
+  <!-- Ground -->
+  <rect x="0" y="720" width="1920" height="360" fill="#1a3020"/>
+
+  <!-- Snow patches on ground -->
+  <ellipse cx="300" cy="780" rx="120" ry="15" fill="#d4d0c8" opacity="0.15"/>
+  <ellipse cx="800" cy="800" rx="80" ry="10" fill="#d4d0c8" opacity="0.1"/>
+  <ellipse cx="1500" cy="770" rx="100" ry="12" fill="#d4d0c8" opacity="0.12"/>
+
+  <!-- Cabin -->
+  <g transform="translate(860, 580)">
+    <!-- Cabin body -->
+    <rect x="0" y="60" width="200" height="120" fill="#3d2b1a" rx="2"/>
+    <!-- Wood texture lines -->
+    <line x1="0" y1="80" x2="200" y2="80" stroke="#4a3520" stroke-width="1"/>
+    <line x1="0" y1="100" x2="200" y2="100" stroke="#4a3520" stroke-width="1"/>
+    <line x1="0" y1="120" x2="200" y2="120" stroke="#4a3520" stroke-width="1"/>
+    <line x1="0" y1="140" x2="200" y2="140" stroke="#4a3520" stroke-width="1"/>
+    <line x1="0" y1="160" x2="200" y2="160" stroke="#4a3520" stroke-width="1"/>
+
+    <!-- Roof -->
+    <polygon points="-20,60 100,-20 220,60" fill="#5a3d28"/>
+    <polygon points="-20,60 100,-20 220,60" fill="none" stroke="#6b4a30" stroke-width="2"/>
+    <!-- Roof snow -->
+    <path d="M-15,58 Q50,10 100,-15 Q150,10 215,58" fill="#d4d0c8" opacity="0.25"/>
+
+    <!-- Chimney -->
+    <rect x="150" y="-10" width="25" height="55" fill="#4a3520"/>
+    <rect x="147" y="-15" width="31" height="8" fill="#5a4030" rx="1"/>
+
+    <!-- Chimney smoke -->
+    <g opacity="0.3">
+      <path d="M162,-15 Q155,-40 165,-60 Q175,-80 160,-100" fill="none" stroke="#aaa" stroke-width="3" filter="url(#blur2)"/>
+      <path d="M165,-100 Q150,-120 160,-145 Q170,-165 155,-180" fill="none" stroke="#999" stroke-width="2" filter="url(#blur2)"/>
+    </g>
+
+    <!-- Window left -->
+    <rect x="30" y="90" width="40" height="40" fill="#1a1208" rx="2"/>
+    <rect x="32" y="92" width="36" height="36" fill="url(#windowGlow)" rx="1"/>
+    <line x1="50" y1="90" x2="50" y2="130" stroke="#3d2b1a" stroke-width="2"/>
+    <line x1="30" y1="110" x2="70" y2="110" stroke="#3d2b1a" stroke-width="2"/>
+    <!-- Window glow -->
+    <circle cx="50" cy="110" r="60" fill="url(#windowGlow)" filter="url(#blur3)" opacity="0.3"/>
+
+    <!-- Window right -->
+    <rect x="130" y="90" width="40" height="40" fill="#1a1208" rx="2"/>
+    <rect x="132" y="92" width="36" height="36" fill="url(#windowGlow)" rx="1"/>
+    <line x1="150" y1="90" x2="150" y2="130" stroke="#3d2b1a" stroke-width="2"/>
+    <line x1="130" y1="110" x2="170" y2="110" stroke="#3d2b1a" stroke-width="2"/>
+    <circle cx="150" cy="110" r="60" fill="url(#windowGlow)" filter="url(#blur3)" opacity="0.3"/>
+
+    <!-- Door -->
+    <rect x="80" y="120" width="40" height="60" fill="#2a1c10" rx="2"/>
+    <circle cx="112" cy="152" r="3" fill="#c8a86e"/>
+    <!-- Door light spill -->
+    <path d="M80,180 L60,220 L140,220 L120,180" fill="#ffcc66" opacity="0.08" filter="url(#blur2)"/>
+  </g>
+
+  <!-- Fireplace glow on ground -->
+  <ellipse cx="960" cy="800" rx="200" ry="40" fill="#ff9933" opacity="0.06" filter="url(#blur3)"/>
+
+  <!-- Pine trees near cabin -->
+  <g>
+    <!-- Left tree 1 -->
+    <rect x="778" y="650" width="8" height="70" fill="#3d2b1a"/>
+    <polygon points="740,660 782,520 824,660" fill="#1e5030"/>
+    <polygon points="748,620 782,500 816,620" fill="#226038"/>
+    <polygon points="756,580 782,490 808,580" fill="#286840"/>
+
+    <!-- Left tree 2 -->
+    <rect x="728" y="670" width="6" height="50" fill="#3d2b1a"/>
+    <polygon points="698,675 731,570 764,675" fill="#1c4828"/>
+    <polygon points="706,640 731,555 756,640" fill="#205530"/>
+
+    <!-- Right tree 1 -->
+    <rect x="1132" y="650" width="8" height="70" fill="#3d2b1a"/>
+    <polygon points="1094,660 1136,520 1178,660" fill="#1e5030"/>
+    <polygon points="1102,620 1136,500 1170,620" fill="#226038"/>
+    <polygon points="1110,580 1136,490 1162,580" fill="#286840"/>
+
+    <!-- Right tree 2 -->
+    <rect x="1192" y="665" width="7" height="55" fill="#3d2b1a"/>
+    <polygon points="1158,670 1195,555 1232,670" fill="#1c4828"/>
+    <polygon points="1166,640 1195,540 1224,640" fill="#205530"/>
+  </g>
+
+  <!-- Falling snow -->
+  <g opacity="0.5">
+    <circle cx="150" cy="300" r="2" fill="#fff" opacity="0.4"/>
+    <circle cx="350" cy="400" r="1.5" fill="#fff" opacity="0.3"/>
+    <circle cx="550" cy="250" r="2.5" fill="#fff" opacity="0.35"/>
+    <circle cx="750" cy="350" r="1.8" fill="#fff" opacity="0.3"/>
+    <circle cx="950" cy="280" r="2" fill="#fff" opacity="0.4"/>
+    <circle cx="1150" cy="380" r="1.5" fill="#fff" opacity="0.3"/>
+    <circle cx="1350" cy="300" r="2.2" fill="#fff" opacity="0.35"/>
+    <circle cx="1550" cy="420" r="1.8" fill="#fff" opacity="0.3"/>
+    <circle cx="1750" cy="320" r="2" fill="#fff" opacity="0.4"/>
+    <circle cx="250" cy="500" r="1.5" fill="#fff" opacity="0.25"/>
+    <circle cx="650" cy="480" r="2" fill="#fff" opacity="0.3"/>
+    <circle cx="1050" cy="450" r="1.8" fill="#fff" opacity="0.25"/>
+    <circle cx="1450" cy="500" r="2.2" fill="#fff" opacity="0.3"/>
+    <circle cx="1650" cy="460" r="1.5" fill="#fff" opacity="0.25"/>
+  </g>
+
+  <!-- Foreground trees (dark, framing) -->
+  <g opacity="0.9">
+    <rect x="-5" y="600" width="15" height="480" fill="#0e1e14"/>
+    <polygon points="-60,620 2,400 64,620" fill="#0e2818"/>
+    <polygon points="-48,560 2,370 52,560" fill="#12301e"/>
+    <polygon points="-36,500 2,350 40,500" fill="#163824"/>
+
+    <rect x="1910" y="580" width="15" height="500" fill="#0e1e14"/>
+    <polygon points="1856,600 1917,380 1978,600" fill="#0e2818"/>
+    <polygon points="1868,540 1917,350 1966,540" fill="#12301e"/>
+    <polygon points="1880,480 1917,330 1954,480" fill="#163824"/>
+  </g>
+
+  <!-- Vignette -->
+  <rect width="1920" height="1080" fill="url(#sky)" opacity="0.3"/>
+  <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+    <stop offset="0%" stop-color="transparent"/>
+    <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+  </radialGradient>
+  <rect width="1920" height="1080" fill="url(#vignette)"/>
+</svg>

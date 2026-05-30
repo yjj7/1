@@ -5,13 +5,11 @@ import nightLibrary from './assets/images/real_night_study_1780056022466.png';
 import seasideStudy from './assets/images/balanced_seaside_study_1780054805083.png';
 import nightHomeOffice from './assets/images/night_home_office_1780054791759.png';
 
-// 音频标识符：synth:xxx 格式，由 audioManager 通过 string matching 匹配合成器
-// 所有音频均由 Web Audio API 实时合成，不依赖任何外部 URL
-
+// 音频标识符：synth:xxx 格式由 audioManager 合成，custom 为用户自定义上传
 export const MUSIC_TRACKS = [
   {
     id: 'gymnopédie',
-    title: 'Gymnopédie No.1 - Satie',
+    title: 'Gymnopédie - Satie',
     audioUrl: 'synth:gymnopedie'
   },
   {
@@ -21,13 +19,33 @@ export const MUSIC_TRACKS = [
   },
   {
     id: 'lofi_calm',
-    title: 'Lofi - Calm Weave',
+    title: 'Lofi - 轻柔节拍',
     audioUrl: 'synth:lofi'
   },
   {
     id: 'focus_piano',
     title: '专注钢琴',
     audioUrl: 'synth:piano'
+  },
+  {
+    id: 'jazz_piano',
+    title: '爵士钢琴',
+    audioUrl: 'synth:jazz'
+  },
+  {
+    id: 'ambient_pad',
+    title: '氛围电子',
+    audioUrl: 'synth:ambient'
+  },
+  {
+    id: 'classical_guitar',
+    title: '古典吉他',
+    audioUrl: 'synth:guitar'
+  },
+  {
+    id: 'meditation',
+    title: '冥想音律',
+    audioUrl: 'synth:meditation'
   },
   {
     id: 'nature_white_noise',
@@ -38,6 +56,11 @@ export const MUSIC_TRACKS = [
     id: 'cafe_ambience',
     title: '咖啡厅环境音',
     audioUrl: 'synth:cafe'
+  },
+  {
+    id: 'custom',
+    title: '🎵 自定义音乐',
+    audioUrl: 'custom'
   },
   {
     id: 'none',

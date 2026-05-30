@@ -1,7 +1,6 @@
-import React from 'react';
-import { BookOpen, Headphones, Volume2, ArrowRight } from 'lucide-react';
+import React, { useRef } from 'react';
+import { BookOpen, Headphones, Volume2, ArrowRight, Upload, Music } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Scene } from '../types';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from '../data';
 
 interface SetupPageProps {
@@ -15,6 +14,8 @@ interface SetupPageProps {
   onBgVolumeChange: (val: number) => void;
   timerDuration: number;
   onTimerDurationChange: (val: number) => void;
+  customMusicUrl: string;
+  onCustomMusicChange: (url: string) => void;
   onBack: () => void;
   onEnter: () => void;
 }
@@ -30,10 +31,28 @@ export function SetupPage({
   onBgVolumeChange,
   timerDuration,
   onTimerDurationChange,
+  customMusicUrl,
+  onCustomMusicChange,
   onBack,
   onEnter,
 }: SetupPageProps) {
   const activeScene = SCENES.find(s => s.id === selectedSceneId) || SCENES[0];
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // 释放旧的 blob URL
+      if (customMusicUrl && customMusicUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(customMusicUrl);
+      }
+      const url = URL.createObjectURL(file);
+      onCustomMusicChange(url);
+      onSelectMusic('custom');
+    }
+  };
+
+  const customFileName = customMusicUrl ? '已选择音乐文件' : '';
 
   return (
     <div className="relative min-h-screen w-full flex flex-col text-white font-sans">
@@ -119,7 +138,7 @@ export function SetupPage({
                   <Headphones className="w-4 h-4 text-white/70" />
                   <span className="text-base font-medium">音乐</span>
                 </div>
-                <div className="mb-4">
+                <div className="mb-3">
                   <select 
                     value={selectedMusicId}
                     onChange={(e) => onSelectMusic(e.target.value)}
@@ -130,6 +149,33 @@ export function SetupPage({
                     ))}
                   </select>
                 </div>
+
+                {/* 自定义音乐上传 */}
+                {selectedMusicId === 'custom' && (
+                  <div className="mb-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl border border-dashed border-white/30 hover:border-white/60 hover:bg-white/5 transition-all text-sm text-white/70 hover:text-white"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>{customFileName || '选择本地音乐文件 (MP3/WAV/OGG)'}</span>
+                    </button>
+                    {customMusicUrl && (
+                      <div className="flex items-center space-x-2 mt-2 text-xs text-green-400">
+                        <Music className="w-3 h-3" />
+                        <span>音乐已就绪</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex-1 h-3 flex items-center relative group">
                   <div className="w-full h-1.5 bg-white/10 rounded-full relative pointer-events-none">
                     <div className="h-full bg-white/80 transition-all" style={{ width: `${musicVolume}%` }}></div>

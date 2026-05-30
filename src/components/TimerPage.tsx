@@ -10,6 +10,7 @@ interface TimerPageProps {
   sceneId: string;
   musicId: string;
   onSelectMusic: (id: string) => void;
+  musicUrl: string;
   durationMinutes: number;
   musicVolume: number;
   bgVolume: number;
@@ -20,12 +21,15 @@ interface TimerPageProps {
   onTasksChange: (val: Task[]) => void;
   pomodoroCount: number;
   onPomodoroComplete: () => void;
+  customMusicUrl: string;
+  onCustomMusicChange: (url: string) => void;
 }
 
 export function TimerPage({
   sceneId,
   musicId,
   onSelectMusic,
+  musicUrl,
   durationMinutes,
   musicVolume,
   bgVolume,
@@ -35,7 +39,9 @@ export function TimerPage({
   tasks,
   onTasksChange,
   pomodoroCount,
-  onPomodoroComplete
+  onPomodoroComplete,
+  customMusicUrl,
+  onCustomMusicChange
 }: TimerPageProps) {
   const activeScene = SCENES.find(s => s.id === sceneId) || SCENES[0];
   
@@ -47,19 +53,18 @@ export function TimerPage({
 
   useEffect(() => {
     audioManager.setMusicVolume(musicVolume / 100);
-  }, [musicVolume]);
+  }, [musicVolume, audioManager]);
 
   useEffect(() => {
     audioManager.setBgVolume(bgVolume / 100);
-  }, [bgVolume]);
+  }, [bgVolume, audioManager]);
 
   useEffect(() => {
-    const track = MUSIC_TRACKS.find(m => m.id === musicId);
-    if (track) {
-      audioManager.setMusic(track.audioUrl);
+    if (musicUrl) {
+      audioManager.setMusic(musicUrl);
       if (isRunning) audioManager.play();
     }
-  }, [musicId]);
+  }, [musicUrl]);
 
   useEffect(() => {
     if (activeScene.audioUrl) {
@@ -339,6 +344,18 @@ export function TimerPage({
                         <option key={m.id} value={m.id} className="text-black">{m.title}</option>
                       ))}
                     </select>
+                    {musicId === 'custom' && !customMusicUrl && (
+                      <label className="cursor-pointer text-xs text-white/50 hover:text-white/80 transition-colors">
+                        上传
+                        <input type="file" accept="audio/*" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (customMusicUrl && customMusicUrl.startsWith('blob:')) URL.revokeObjectURL(customMusicUrl);
+                            onCustomMusicChange(URL.createObjectURL(file));
+                          }
+                        }} />
+                      </label>
+                    )}
                     <div className="flex-1 h-2 flex items-center relative group">
                       <div className="w-full h-1 bg-white/20 rounded-full relative pointer-events-none">
                         <div className="h-full bg-white/80 transition-all" style={{ width: `${musicVolume}%` }}></div>

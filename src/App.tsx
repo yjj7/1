@@ -28,6 +28,7 @@ export default function App() {
   const [timerDuration, setTimerDuration] = useState<number>(savedState.timerDuration ?? DURATIONS[1]);
   const [tasks, setTasks] = useState<Task[]>(savedState.tasks ?? []);
   const [pomodoroCount, setPomodoroCount] = useState<number>(savedState.pomodoroCount ?? 0);
+  const [customMusicUrl, setCustomMusicUrl] = useState<string>('');
 
   useEffect(() => {
     localStorage.setItem('studyWithMeState', JSON.stringify({
@@ -40,6 +41,13 @@ export default function App() {
       pomodoroCount
     }));
   }, [selectedSceneId, selectedMusicId, musicVolume, bgVolume, timerDuration, tasks, pomodoroCount]);
+
+  // 获取实际音乐 URL（自定义上传的用 blob URL，否则用 data.ts 里的）
+  const getMusicUrl = (musicId: string) => {
+    if (musicId === 'custom' && customMusicUrl) return customMusicUrl;
+    const track = MUSIC_TRACKS.find(m => m.id === musicId);
+    return track?.audioUrl || '';
+  };
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white/30">
@@ -63,9 +71,10 @@ export default function App() {
           onBgVolumeChange={setBgVolume}
           timerDuration={timerDuration}
           onTimerDurationChange={setTimerDuration}
+          customMusicUrl={customMusicUrl}
+          onCustomMusicChange={setCustomMusicUrl}
           onBack={() => setAppState('landing')}
           onEnter={() => {
-            // 关键：在用户点击时机解锁浏览器音频（必须用户手势）
             try {
               const silent = new Audio();
               silent.play().then(() => silent.pause()).catch(() => {});
@@ -84,10 +93,10 @@ export default function App() {
         <LoadingScreen
           sceneId={loadingSceneId}
           musicId={loadingMusicId}
+          musicUrl={getMusicUrl(loadingMusicId)}
           musicVolume={loadingMusicVolume}
           bgVolume={loadingBgVolume}
           onReady={() => {
-            // Audio is already init-ed inside LoadingScreen
             setAppState('timer');
           }}
         />
@@ -98,6 +107,7 @@ export default function App() {
           sceneId={selectedSceneId}
           musicId={selectedMusicId}
           onSelectMusic={setSelectedMusicId}
+          musicUrl={getMusicUrl(selectedMusicId)}
           durationMinutes={timerDuration}
           musicVolume={musicVolume}
           onMusicVolumeChange={setMusicVolume}
@@ -112,6 +122,8 @@ export default function App() {
           onTasksChange={setTasks}
           pomodoroCount={pomodoroCount}
           onPomodoroComplete={() => setPomodoroCount(prev => prev + 1)}
+          customMusicUrl={customMusicUrl}
+          onCustomMusicChange={setCustomMusicUrl}
         />
       )}
     </div>

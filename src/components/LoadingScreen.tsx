@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Scene } from '../types';
 import { audioManager } from '../audioManager';
 import { SCENES, MUSIC_TRACKS } from '../data';
 
 interface LoadingScreenProps {
   sceneId: string;
   musicId: string;
+  musicUrl: string;
   musicVolume: number;
   bgVolume: number;
   onReady: () => void;
 }
 
-export function LoadingScreen({ sceneId, musicId, musicVolume, bgVolume, onReady }: LoadingScreenProps) {
+export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolume, onReady }: LoadingScreenProps) {
   const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
   const musicTrack = MUSIC_TRACKS.find(m => m.id === musicId) || MUSIC_TRACKS[0];
   const [phase, setPhase] = useState<'image' | 'audio' | 'ready'>('image');
@@ -24,10 +24,10 @@ export function LoadingScreen({ sceneId, musicId, musicVolume, bgVolume, onReady
     img.src = scene.imageUrl;
   }, [scene.imageUrl]);
 
-  // Step 2: Init audio after image is ready (ctx already unlocked by user click)
+  // Step 2: Init audio after image is ready
   useEffect(() => {
     if (phase !== 'audio') return;
-    let musicReady = !musicTrack?.audioUrl;
+    let musicReady = !musicUrl;
     let bgReady = !scene?.audioUrl;
     let done = false;
 
@@ -41,8 +41,8 @@ export function LoadingScreen({ sceneId, musicId, musicVolume, bgVolume, onReady
     };
 
     try {
-      if (musicTrack?.audioUrl) {
-        audioManager.setMusic(musicTrack.audioUrl, {
+      if (musicUrl) {
+        audioManager.setMusic(musicUrl, {
           onLoad: () => { musicReady = true; checkReady(); },
           onError: () => { musicReady = true; checkReady(); },
         });
@@ -55,13 +55,13 @@ export function LoadingScreen({ sceneId, musicId, musicVolume, bgVolume, onReady
       }
       audioManager.setMusicVolume(musicVolume / 100);
       audioManager.setBgVolume(bgVolume / 100);
-      checkReady(); // 如果没有音频URL，直接跳过
+      checkReady();
     } catch (e) {
       console.warn('Audio init failed', e);
       setPhase('ready');
     }
 
-    // 兜底：8 秒后强制进入（防止网络慢或音频合成延迟）
+    // 兜底：8 秒后强制进入
     const t = setTimeout(() => {
       if (!done) {
         console.warn('[LoadingScreen] Audio load timeout, proceeding anyway');
@@ -71,7 +71,7 @@ export function LoadingScreen({ sceneId, musicId, musicVolume, bgVolume, onReady
       }
     }, 8000);
     return () => clearTimeout(t);
-  }, [phase, musicTrack, scene, musicVolume, bgVolume]);
+  }, [phase, musicUrl, scene, musicVolume, bgVolume]);
 
   // Step 3: Brief hold on "ready", then enter
   useEffect(() => {
