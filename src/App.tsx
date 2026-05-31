@@ -1,64 +1,91 @@
-import React, { useState, useEffect } from 'react';
-import { AppState, Task } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import { AppState, Task, StudySession, DailyGoal, Note } from './types';
 import { LandingPage } from './components/LandingPage';
 import { SetupPage } from './components/SetupPage';
 import { TimerPage } from './components/TimerPage';
 import { LoadingScreen } from './components/LoadingScreen';
+import { StatsPage } from './components/StatsPage';
+import { HistoryPage } from './components/HistoryPage';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from './data';
 import { audioManager } from './audioManager';
 
+function loadState<T>(key: string, fallback: T): T {
+  try { return JSON.parse(localStorage.getItem(key) || '') ?? fallback; } catch { return fallback; }
+}
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('landing');
-  const [loadingSceneId, setLoadingSceneId] = useState<string>('');
-  const [loadingMusicId, setLoadingMusicId] = useState<string>('');
-  const [loadingMusicVolume, setLoadingMusicVolume] = useState<number>(50);
-  const [loadingBgVolume, setLoadingBgVolume] = useState<number>(30);
-  
-  const savedState = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('studyWithMeState') || '{}');
-    } catch { return {}; }
-  })();
+  const [loadingSceneId, setLoadingSceneId] = useState('');
+  const [loadingMusicId, setLoadingMusicId] = useState('');
+  const [loadingMusicVolume, setLoadingMusicVolume] = useState(50);
+  const [loadingBgVolume, setLoadingBgVolume] = useState(30);
 
-  const [selectedSceneId, setSelectedSceneId] = useState<string>(savedState.selectedSceneId || SCENES[0].id);
-  const [selectedMusicId, setSelectedMusicId] = useState<string>(savedState.selectedMusicId || MUSIC_TRACKS[0].id);
-  const [musicVolume, setMusicVolume] = useState<number>(savedState.musicVolume ?? 50);
-  const [bgVolume, setBgVolume] = useState<number>(savedState.bgVolume ?? 30);
-  const [timerDuration, setTimerDuration] = useState<number>(savedState.timerDuration ?? DURATIONS[1]);
-  const [tasks, setTasks] = useState<Task[]>(savedState.tasks ?? []);
-  const [pomodoroCount, setPomodoroCount] = useState<number>(savedState.pomodoroCount ?? 0);
-  const [customMusicUrl, setCustomMusicUrl] = useState<string>('');
+  // Persisted preferences
+  const [selectedSceneId, setSelectedSceneId] = useState(() => loadState('swm_scene', SCENES[0].id));
+  const [selectedMusicId, setSelectedMusicId] = useState(() => loadState('swm_music', MUSIC_TRACKS[0].id));
+  const [musicVolume, setMusicVolume] = useState(() => loadState('swm_musicVol', 50));
+  const [bgVolume, setBgVolume] = useState(() => loadState('swm_bgVol', 30));
+  const [timerDuration, setTimerDuration] = useState(() => loadState('swm_duration', DURATIONS[1]));
+  const [tasks, setTasks] = useState<Task[]>(() => loadState('swm_tasks', []));
+  const [pomodoroCount, setPomodoroCount] = useState(() => loadState('swm_pomodoros', 0));
+  const [customMusicUrl, setCustomMusicUrl] = useState('');
+  const [customBgUrl, setCustomBgUrl] = useState(() => loadState('swm_customBg', ''));
+  const [dailyGoal, setDailyGoal] = useState<DailyGoal>(() => loadState('swm_dailyGoal', { targetMinutes: 120 }));
+  const [studyHistory, setStudyHistory] = useState<StudySession[]>(() => loadState('swm_history', []));
+  const [notes, setNotes] = useState<Note[]>(() => loadState('swm_notes', []));
+  const [streak, setStreak] = useState(() => loadState('swm_streak', 0));
 
+  // Persist on change
   useEffect(() => {
-    localStorage.setItem('studyWithMeState', JSON.stringify({
-      selectedSceneId,
-      selectedMusicId,
-      musicVolume,
-      bgVolume,
-      timerDuration,
-      tasks,
-      pomodoroCount
-    }));
-  }, [selectedSceneId, selectedMusicId, musicVolume, bgVolume, timerDuration, tasks, pomodoroCount]);
+    const data = {
+      swm_scene: selectedSceneId, swm_music: selectedMusicId,
+      swm_musicVol: musicVolume, swm_bgVol: bgVolume,
+      swm_duration: timerDuration, swm_tasks: tasks, swm_pomodoros: pomodoroCount,
+      swm_dailyGoal: dailyGoal, swm_history: studyHistory, swm_notes: notes, swm_streak: streak,
+    };
+    Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+  }, [selectedSceneId, selectedMusicId, musicVolume, bgVolume, timerDuration, tasks, pomodoroCount, dailyGoal, studyHistory, notes, streak]);
 
-  // 获取实际音乐 URL（自定义上传的用 blob URL，否则用 data.ts 里的）
+  // Update streak
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todaySessions = studyHistory.filter(s => s.date.slice(0, 10) === today);
+    const totalMinutes = todaySessions.reduce((sum, s) => sum + s.duration, 0) / 60;
+    if (totalMinutes >= dailyGoal.targetMinutes) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const yesterdaySessions = studyHistory.filter(s => s.date.slice(0, 10) === yesterday);
+      const yesterdayMinutes = yesterdaySessions.reduce((sum, s) => sum + s.duration, 0) / 60;
+      if (yesterdayMinutes >= dailyGoal.targetMinutes || streak === 0) {
+        setStreak(prev => Math.max(prev, 1));
+      }
+    }
+  }, [studyHistory, dailyGoal, streak]);
+
   const getMusicUrl = (musicId: string) => {
     if (musicId === 'custom' && customMusicUrl) return customMusicUrl;
-    const track = MUSIC_TRACKS.find(m => m.id === musicId);
-    return track?.audioUrl || '';
+    return MUSIC_TRACKS.find(m => m.id === musicId)?.audioUrl || '';
   };
+
+  const getSceneImageUrl = (sceneId: string) => {
+    if (sceneId === 'custom' && customBgUrl) return customBgUrl;
+    return SCENES.find(s => s.id === sceneId)?.imageUrl || SCENES[0].imageUrl;
+  };
+
+  const recordSession = useCallback((session: StudySession) => {
+    setStudyHistory(prev => [...prev, session]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white/30">
       {appState === 'landing' && (
-        <LandingPage 
-          onStart={() => {
-            setAppState('setup');
-          }} 
+        <LandingPage
+          onStart={() => setAppState('setup')}
+          onStats={() => setAppState('stats')}
+          onHistory={() => setAppState('history')}
+          streak={streak}
+          pomodoroCount={pomodoroCount}
         />
       )}
-      
       {appState === 'setup' && (
         <SetupPage
           selectedSceneId={selectedSceneId}
@@ -73,12 +100,15 @@ export default function App() {
           onTimerDurationChange={setTimerDuration}
           customMusicUrl={customMusicUrl}
           onCustomMusicChange={setCustomMusicUrl}
+          customBgUrl={customBgUrl}
+          onCustomBgChange={(url) => { setCustomBgUrl(url); setSelectedSceneId('custom'); }}
+          dailyGoal={dailyGoal}
+          onDailyGoalChange={setDailyGoal}
           onBack={() => setAppState('landing')}
+          onStats={() => setAppState('stats')}
+          onHistory={() => setAppState('history')}
           onEnter={() => {
-            try {
-              const silent = new Audio();
-              silent.play().then(() => silent.pause()).catch(() => {});
-            } catch {}
+            try { const s = new Audio(); s.play().then(() => s.pause()).catch(() => {}); } catch {}
             audioManager.init();
             setLoadingSceneId(selectedSceneId);
             setLoadingMusicId(selectedMusicId);
@@ -88,7 +118,6 @@ export default function App() {
           }}
         />
       )}
-      
       {appState === 'loading' && (
         <LoadingScreen
           sceneId={loadingSceneId}
@@ -96,12 +125,9 @@ export default function App() {
           musicUrl={getMusicUrl(loadingMusicId)}
           musicVolume={loadingMusicVolume}
           bgVolume={loadingBgVolume}
-          onReady={() => {
-            setAppState('timer');
-          }}
+          onReady={() => setAppState('timer')}
         />
       )}
-
       {appState === 'timer' && (
         <TimerPage
           sceneId={selectedSceneId}
@@ -113,10 +139,7 @@ export default function App() {
           onMusicVolumeChange={setMusicVolume}
           bgVolume={bgVolume}
           onBgVolumeChange={setBgVolume}
-          onExit={() => {
-            audioManager.stop();
-            setAppState('landing');
-          }}
+          onExit={() => { audioManager.stop(); setAppState('landing'); }}
           key={`${selectedSceneId}-${selectedMusicId}`}
           tasks={tasks}
           onTasksChange={setTasks}
@@ -124,6 +147,26 @@ export default function App() {
           onPomodoroComplete={() => setPomodoroCount(prev => prev + 1)}
           customMusicUrl={customMusicUrl}
           onCustomMusicChange={setCustomMusicUrl}
+          sceneImageUrl={getSceneImageUrl(selectedSceneId)}
+          onRecordSession={recordSession}
+          notes={notes}
+          onNotesChange={setNotes}
+        />
+      )}
+      {appState === 'stats' && (
+        <StatsPage
+          studyHistory={studyHistory}
+          dailyGoal={dailyGoal}
+          streak={streak}
+          pomodoroCount={pomodoroCount}
+          onBack={() => setAppState('landing')}
+        />
+      )}
+      {appState === 'history' && (
+        <HistoryPage
+          studyHistory={studyHistory}
+          onBack={() => setAppState('landing')}
+          onClearHistory={() => { setStudyHistory([]); setStreak(0); setPomodoroCount(0); }}
         />
       )}
     </div>

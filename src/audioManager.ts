@@ -1,4 +1,4 @@
-// Web Audio API 内建音频合成 + HTMLAudioElement 支持（自定义上传/外部URL）
+// Web Audio API 内建音频合成 + HTMLAudioElement 支持 + 白噪音混合器
 
 interface SetAudioOpts {
   onLoad?: () => void;
@@ -26,6 +26,10 @@ let bgGain: GainNode | null = null;
 let bgSource: AudioBufferSourceNode | null = null;
 let bgRunning = false;
 
+// 白噪音混合器节点
+const noiseNodes: Map<string, { source: AudioBufferSourceNode; gain: GainNode; filter?: BiquadFilterNode }> = new Map();
+let noiseMasterGain: GainNode | null = null;
+
 class AudioManager {
   musicVol: number = 0.5;
   bgVol: number = 0.3;
@@ -39,17 +43,10 @@ class AudioManager {
   }
 
   setMusic(src: string, opts?: SetAudioOpts) {
-    if (this.musicSrc === src) {
-      opts?.onLoad?.();
-      return;
-    }
+    if (this.musicSrc === src) { opts?.onLoad?.(); return; }
     this.stopMusic();
     this.musicSrc = src;
-    if (!src) {
-      opts?.onLoad?.();
-      return;
-    }
-    // blob: 和 http: URL 需要预加载
+    if (!src) { opts?.onLoad?.(); return; }
     if (src.startsWith('blob:') || src.startsWith('http')) {
       const audio = new Audio(src);
       audio.addEventListener('canplaythrough', () => opts?.onLoad?.(), { once: true });
@@ -61,33 +58,16 @@ class AudioManager {
   }
 
   setBg(src: string, opts?: SetAudioOpts) {
-    if (this.bgSrc === src) {
-      opts?.onLoad?.();
-      return;
-    }
+    if (this.bgSrc === src) { opts?.onLoad?.(); return; }
     this.stopBg();
     this.bgSrc = src;
-    if (!src) {
-      opts?.onLoad?.();
-      return;
-    }
+    if (!src) { opts?.onLoad?.(); return; }
     setTimeout(() => opts?.onLoad?.(), 10);
   }
 
-  play() {
-    this.playMusic();
-    this.playBg();
-  }
-
-  pause() {
-    this.stopMusic();
-    this.stopBg();
-  }
-
-  stop() {
-    this.stopMusic();
-    this.stopBg();
-  }
+  play() { this.playMusic(); this.playBg(); }
+  pause() { this.stopMusic(); this.stopBg(); }
+  stop() { this.stopMusic(); this.stopBg(); }
 
   setMusicVolume(v: number) {
     this.musicVol = v;
@@ -100,12 +80,88 @@ class AudioManager {
     if (bgGain) bgGain.gain.setTargetAtTime(v, getCtx().currentTime, 0.1);
   }
 
+  // ---- Noise Mixer ----
+  startNoise(id: string, volume: number) {
+    const ctx = getCtx();
+    if (!noiseMasterGain) {
+      noiseMasterGain = ctx.createGain();
+      noiseMasterGain.gain.value = 1;
+      noiseMasterGain.connect(ctx.destination);
+    }
+    if (noiseNodes.has(id)) {
+      const n = noiseNodes.get(id)!;
+      n.gain.gain.setTargetAtTime(volume / 100, ctx.currentTime, 0.3);
+      return;
+    }
+    const bufferSize = 4 * ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    if (id === 'pink' || id === 'rain' || id === 'cafe' || id === 'forest') {
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (let i = 0; i < bufferSize; i++) {
+        const w = Math.random()*2-1;
+        b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759; b2=0.969*b2+w*0.153852;
+        b3=0.8665*b3+w*0.3104856; b4=0.55*b4+w*0.5329522; b5=-0.7616*b5-w*0.016898;
+        data[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.05; b6=w*0.115926;
+      }
+    } else if (id === 'brown') {
+      let last = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const w = Math.random()*2-1;
+        last = (last + 0.02 * w) / 1.02;
+        data[i] = last * 3.5;
+      }
+    } else {
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random()*2-1)*0.05;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+
+    const gain = ctx.createGain();
+    gain.gain.value = volume / 100;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    const freqMap: Record<string, number> = {
+      rain: 2000, thunder: 500, fire: 800, wind: 600, birds: 5000,
+      ocean: 400, cafe: 2000, keyboard: 3000, forest: 3000,
+      white: 8000, pink: 4000, brown: 300,
+    };
+    filter.frequency.value = freqMap[id] || 2000;
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(noiseMasterGain);
+    src.start();
+    noiseNodes.set(id, { source: src, gain, filter });
+  }
+
+  setNoiseVolume(id: string, volume: number) {
+    const n = noiseNodes.get(id);
+    if (n) n.gain.gain.setTargetAtTime(volume / 100, getCtx().currentTime, 0.3);
+  }
+
+  stopNoise(id: string) {
+    const n = noiseNodes.get(id);
+    if (n) {
+      try { n.source.stop(); } catch {}
+      n.gain.disconnect();
+      noiseNodes.delete(id);
+    }
+  }
+
+  stopAllNoise() {
+    noiseNodes.forEach((_, id) => this.stopNoise(id));
+  }
+
   // ---- Music Player ----
   private playMusic() {
     if (musicRunning) return;
     if (!this.musicSrc) return;
 
-    // 真实音频文件（blob: 或 http:）
     if (this.musicSrc.startsWith('blob:') || this.musicSrc.startsWith('http')) {
       musicRunning = true;
       if (!this._musicAudioEl || this._musicAudioEl.src !== this.musicSrc) {
@@ -113,14 +169,10 @@ class AudioManager {
         this._musicAudioEl.loop = true;
         this._musicAudioEl.volume = this.musicVol;
       }
-      this._musicAudioEl.play().catch(e => {
-        console.warn('Music play failed:', e);
-        musicRunning = false;
-      });
+      this._musicAudioEl.play().catch(e => { console.warn('Music play failed:', e); musicRunning = false; });
       return;
     }
 
-    // 合成音乐
     const ctx = getCtx();
     musicGain = ctx.createGain();
     musicGain.gain.value = this.musicVol;
@@ -143,16 +195,16 @@ class AudioManager {
 
     const pentatonic = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
     const sequences: Record<string, number[][]> = {
-      gymnopedie: [[0, 2, 4, 1, 3, 5, 4, 2], [1.5, 1, 1.5, 1, 1, 1.5, 1, 1.5]],
-      clair:      [[0, 3, 5, 3, 0, 4, 2, 0],  [2, 1, 1.5, 1, 1, 1.5, 1, 2]],
-      lofi:       [[0, 1, 3, 2, 4, 3, 5, 4],  [1, 1, 1, 1, 1, 1, 1, 1]],
-      piano:      [[0, 2, 4, 5, 3, 1, 2, 0],  [1, 1.5, 1, 1, 1, 1.5, 1, 1]],
-      cafe:       [[0, 4, 3, 1, 2, 5, 4, 0],  [1.5, 1, 1, 1.5, 1, 1, 1, 1.5]],
-      nature:     [[0, 2, 0, 4, 0, 2, 0, 5],  [2, 1, 2, 1, 2, 1, 2, 1]],
-      jazz:       [[0, 4, 2, 5, 1, 3, 0, 6],  [1.5, 0.75, 1.5, 0.75, 1, 1, 1.5, 0.75]],
-      ambient:    [[0, 0, 2, 2, 4, 4, 2, 0],  [3, 2, 3, 2, 2, 3, 2, 3]],
-      guitar:     [[0, 2, 4, 2, 0, 3, 5, 3],  [1, 0.5, 1, 0.5, 1, 0.5, 1, 0.5]],
-      meditation: [[0, 0, 0, 0, 2, 2, 0, 0],  [4, 3, 4, 3, 4, 3, 4, 3]],
+      gymnopedie: [[0,2,4,1,3,5,4,2],[1.5,1,1.5,1,1,1.5,1,1.5]],
+      clair: [[0,3,5,3,0,4,2,0],[2,1,1.5,1,1,1.5,1,2]],
+      lofi: [[0,1,3,2,4,3,5,4],[1,1,1,1,1,1,1,1]],
+      piano: [[0,2,4,5,3,1,2,0],[1,1.5,1,1,1,1.5,1,1]],
+      cafe: [[0,4,3,1,2,5,4,0],[1.5,1,1,1.5,1,1,1,1.5]],
+      nature: [[0,2,0,4,0,2,0,5],[2,1,2,1,2,1,2,1]],
+      jazz: [[0,4,2,5,1,3,0,6],[1.5,0.75,1.5,0.75,1,1,1.5,0.75]],
+      ambient: [[0,0,2,2,4,4,2,0],[3,2,3,2,2,3,2,3]],
+      guitar: [[0,2,4,2,0,3,5,3],[1,0.5,1,0.5,1,0.5,1,0.5]],
+      meditation: [[0,0,0,0,2,2,0,0],[4,3,4,3,4,3,4,3]],
     };
 
     const [notes, durations] = sequences[musicType] || sequences.piano;
@@ -163,13 +215,10 @@ class AudioManager {
       if (!musicRunning || !musicGain) return;
       activeNodes.forEach(n => { try { n.stop(); } catch {} });
       activeNodes = [];
-
       const freq = pentatonic[notes[noteIdx] % pentatonic.length];
       const dur = durations[noteIdx] * 0.6;
-
-      // 主音
       const osc1 = ctx.createOscillator();
-      osc1.type = musicType === 'jazz' ? 'triangle' : musicType === 'ambient' ? 'sine' : 'sine';
+      osc1.type = 'sine';
       osc1.frequency.value = freq;
       const env1 = ctx.createGain();
       env1.gain.setValueAtTime(0, ctx.currentTime);
@@ -181,7 +230,6 @@ class AudioManager {
       osc1.stop(ctx.currentTime + dur + 0.1);
       activeNodes.push(osc1);
 
-      // 泛音
       const osc2 = ctx.createOscillator();
       osc2.type = 'sine';
       osc2.frequency.value = musicType === 'jazz' ? freq * 1.414 : freq * 1.5;
@@ -194,7 +242,6 @@ class AudioManager {
       osc2.start(ctx.currentTime);
       osc2.stop(ctx.currentTime + dur + 0.1);
       activeNodes.push(osc2);
-
       noteIdx = (noteIdx + 1) % notes.length;
     };
 
@@ -203,217 +250,108 @@ class AudioManager {
       if (!musicRunning) { clearInterval(interval); return; }
       playNote();
     }, durations[noteIdx === 0 ? notes.length - 1 : noteIdx - 1] * 600);
-
     this._musicInterval = interval;
   }
 
-  // ---- Background Sound Synthesizer ----
+  // ---- Background Sound ----
   private playBg() {
     if (bgRunning) return;
     if (!this.bgSrc) return;
     const ctx = getCtx();
-
     bgGain = ctx.createGain();
     bgGain.gain.value = this.bgVol;
     bgGain.connect(ctx.destination);
     bgRunning = true;
 
-    const bgType = this.bgSrc.includes('bird') || this.bgSrc.includes('Bird') ? 'birds'
-      : this.bgSrc.includes('rain') || this.bgSrc.includes('Rain') ? 'rain'
-      : this.bgSrc.includes('wave') || this.bgSrc.includes('Ocean') || this.bgSrc.includes('ocean') ? 'ocean'
-      : this.bgSrc.includes('keyboard') || this.bgSrc.includes('Keyboard') ? 'keyboard'
+    const bgType = this.bgSrc.includes('bird') ? 'birds'
+      : this.bgSrc.includes('rain') ? 'rain'
+      : this.bgSrc.includes('ocean') ? 'ocean'
+      : this.bgSrc.includes('keyboard') ? 'keyboard'
       : this.bgSrc.includes('forest') ? 'forest'
-      : this.bgSrc.includes('city') || this.bgSrc.includes('City') ? 'city'
-      : this.bgSrc.includes('silence') || this.bgSrc.includes('Silence') ? 'silence'
+      : this.bgSrc.includes('city') ? 'city'
       : 'silence';
 
     switch (bgType) {
-      case 'rain': this._playNoise(ctx, bgGain, { colour: 'pink', lowpass: 2000 }); break;
+      case 'rain': this._playNoise(ctx, bgGain, 'pink', 2000); break;
       case 'birds': this._playBirds(ctx, bgGain); break;
       case 'ocean': this._playOcean(ctx, bgGain); break;
       case 'keyboard': this._playKeyboard(ctx, bgGain); break;
-      case 'forest': this._playForest(ctx, bgGain); break;
-      case 'city': this._playCityDrone(ctx, bgGain); break;
-      case 'silence': break;
+      case 'forest': this._playNoise(ctx, bgGain, 'pink', 3000); this._playBirds(ctx, bgGain); break;
+      case 'city': this._playNoise(ctx, bgGain, 'pink', 300); break;
     }
   }
 
   private stopMusic() {
     musicRunning = false;
     if (this._musicInterval) { clearInterval(this._musicInterval); this._musicInterval = null; }
-    if (this._musicAudioEl) {
-      this._musicAudioEl.pause();
-      this._musicAudioEl.currentTime = 0;
-    }
-    if (musicGain) {
-      musicGain.disconnect();
-      musicGain = null;
-    }
+    if (this._musicAudioEl) { this._musicAudioEl.pause(); this._musicAudioEl.currentTime = 0; }
+    if (musicGain) { musicGain.disconnect(); musicGain = null; }
   }
 
   private stopBg() {
     bgRunning = false;
-    if (bgSource) {
-      try { bgSource.stop(); } catch {}
-      bgSource = null;
-    }
-    if (bgGain) {
-      bgGain.disconnect();
-      bgGain = null;
-    }
+    if (bgSource) { try { bgSource.stop(); } catch {} bgSource = null; }
+    if (bgGain) { bgGain.disconnect(); bgGain = null; }
   }
 
-  // ---- Ambient Sound Generators ----
-
-  private _playNoise(ctx: AudioContext, out: GainNode, opts: { colour?: string; lowpass?: number }) {
-    const bufferSize = 4 * ctx.sampleRate;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-
-    if (opts.colour === 'pink') {
-      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.96900 * b2 + white * 0.1538520;
-        b3 = 0.86650 * b3 + white * 0.3104856;
-        b4 = 0.55000 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.0168980;
-        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.05;
-        b6 = white * 0.115926;
-      }
+  private _playNoise(ctx: AudioContext, out: GainNode, colour: string, lowpass: number) {
+    const sz = 4 * ctx.sampleRate;
+    const buf = ctx.createBuffer(1, sz, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    if (colour === 'pink') {
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (let i=0;i<sz;i++){const w=Math.random()*2-1;b0=0.99886*b0+w*0.0555179;b1=0.99332*b1+w*0.0750759;b2=0.969*b2+w*0.153852;b3=0.8665*b3+w*0.3104856;b4=0.55*b4+w*0.5329522;b5=-0.7616*b5-w*0.016898;d[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.05;b6=w*0.115926;}
     } else {
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * 0.05;
-      }
+      for (let i=0;i<sz;i++) d[i]=(Math.random()*2-1)*0.05;
     }
-
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = opts.lowpass || 2000;
-
-    src.connect(filter);
-    filter.connect(out);
-    src.start();
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = lowpass;
+    src.connect(filter); filter.connect(out); src.start();
     bgSource = src;
   }
 
   private _playBirds(ctx: AudioContext, out: GainNode) {
-    const scheduleChirp = () => {
-      if (!bgRunning || !bgGain) return;
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      const baseFreq = 2000 + Math.random() * 3000;
-      osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.3, ctx.currentTime + 0.08);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.8, ctx.currentTime + 0.15);
-
+    const go = () => {
+      if (!bgRunning||!bgGain) return;
+      const osc = ctx.createOscillator(); osc.type = 'sine';
+      const f = 2000+Math.random()*3000;
+      osc.frequency.setValueAtTime(f, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(f*1.3, ctx.currentTime+0.08);
+      osc.frequency.exponentialRampToValueAtTime(f*0.8, ctx.currentTime+0.15);
       const env = ctx.createGain();
       env.gain.setValueAtTime(0, ctx.currentTime);
-      env.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.02);
-      env.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
-
-      osc.connect(env);
-      env.connect(out);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.25);
-
-      setTimeout(scheduleChirp, 800 + Math.random() * 4000);
+      env.gain.linearRampToValueAtTime(0.08, ctx.currentTime+0.02);
+      env.gain.linearRampToValueAtTime(0, ctx.currentTime+0.2);
+      osc.connect(env); env.connect(out); osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.25);
+      setTimeout(go, 800+Math.random()*4000);
     };
-    scheduleChirp();
+    go();
   }
 
   private _playOcean(ctx: AudioContext, out: GainNode) {
-    const bufferSize = 4 * ctx.sampleRate;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.1;
-    }
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.loop = true;
-
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.12;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 200;
-    lfo.connect(lfoGain);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 400;
-    lfoGain.connect(filter.frequency);
-
-    const filter2 = ctx.createBiquadFilter();
-    filter2.type = 'highpass';
-    filter2.frequency.value = 50;
-
-    src.connect(filter);
-    filter.connect(filter2);
-    filter2.connect(out);
-    src.start();
-    lfo.start();
-    bgSource = src;
+    const sz=4*ctx.sampleRate; const buf=ctx.createBuffer(1,sz,ctx.sampleRate); const d=buf.getChannelData(0);
+    for(let i=0;i<sz;i++) d[i]=(Math.random()*2-1)*0.1;
+    const src=ctx.createBufferSource(); src.buffer=buf; src.loop=true;
+    const lfo=ctx.createOscillator(); lfo.frequency.value=0.12;
+    const lfoG=ctx.createGain(); lfoG.gain.value=200; lfo.connect(lfoG);
+    const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=400; lfoG.connect(f.frequency);
+    const f2=ctx.createBiquadFilter(); f2.type='highpass'; f2.frequency.value=50;
+    src.connect(f); f.connect(f2); f2.connect(out); src.start(); lfo.start();
+    bgSource=src;
   }
 
   private _playKeyboard(ctx: AudioContext, out: GainNode) {
-    const scheduleKey = () => {
-      if (!bgRunning || !bgGain) return;
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.value = 800 + Math.random() * 400;
-
-      const env = ctx.createGain();
-      env.gain.setValueAtTime(0, ctx.currentTime);
-      env.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.005);
-      env.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.04);
-
-      osc.connect(env);
-      env.connect(out);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.06);
-
-      setTimeout(scheduleKey, 200 + Math.random() * 600);
+    const go=()=>{
+      if(!bgRunning||!bgGain) return;
+      const osc=ctx.createOscillator(); osc.type='triangle'; osc.frequency.value=800+Math.random()*400;
+      const env=ctx.createGain();
+      env.gain.setValueAtTime(0,ctx.currentTime);
+      env.gain.linearRampToValueAtTime(0.06,ctx.currentTime+0.005);
+      env.gain.linearRampToValueAtTime(0,ctx.currentTime+0.04);
+      osc.connect(env); env.connect(out); osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.06);
+      setTimeout(go, 200+Math.random()*600);
     };
-    scheduleKey();
-  }
-
-  private _playForest(ctx: AudioContext, out: GainNode) {
-    this._playNoise(ctx, out, { colour: 'pink', lowpass: 3000 });
-    this._playBirds(ctx, out);
-  }
-
-  private _playCityDrone(ctx: AudioContext, out: GainNode) {
-    const bufferSize = 4 * ctx.sampleRate;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.03;
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 300;
-
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.08;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 100;
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
-
-    src.connect(filter);
-    filter.connect(out);
-    src.start();
-    lfo.start();
-    bgSource = src;
+    go();
   }
 }
 
