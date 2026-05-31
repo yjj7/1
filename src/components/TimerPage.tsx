@@ -33,10 +33,10 @@ export function TimerPage({
 }: TimerPageProps) {
   const { t } = useT();
   const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
-  const isBreak = ['shortBreak', 'longBreak'].includes(pomodoroPhase);
 
   // States
   const [pomodoroPhase, setPomodoroPhase] = useState<PomodoroPhase>('meditation');
+  const isBreak = ['shortBreak', 'longBreak'].includes(pomodoroPhase);
   const [timerMode, setTimerMode] = useState<TimerMode>('countdown');
   const [meditationTime, setMeditationTime] = useState(MEDITATION_SECONDS);
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
