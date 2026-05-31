@@ -84,6 +84,10 @@ export function SetupPage(props: SetupPageProps) {
           <div className="mb-4">
             <div className="flex items-center space-x-2">
               <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 01</span>
+              <button onClick={() => { const r = SCENES[Math.floor(Math.random() * SCENES.length)]; onSelectScene(r.id); }}
+                className="flex items-center space-x-1 text-[10px] text-purple-400/80 hover:text-purple-300 transition-colors">
+                <span>🎲</span><span>随机场景</span>
+              </button>
               {recommendedScene && (
                 <button onClick={() => onSelectScene(recommendedScene)}
                   className="flex items-center space-x-1 text-[10px] text-amber-400/80 hover:text-amber-300 transition-colors">

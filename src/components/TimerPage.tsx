@@ -6,6 +6,7 @@ import { SCENES, MUSIC_TRACKS, NOISE_PRESETS } from '../data';
 import { audioManager, playClickSound, playSuccessSound } from '../audioManager';
 import { CinematicBackground } from './CinematicBackground';
 import { SceneClock } from './SceneClock';
+import { AudioVisualizer } from './AudioVisualizer';
 
 interface TimerPageProps {
   sceneId: string;
@@ -284,6 +285,8 @@ export function TimerPage({
             </span>
           </motion.div>
         )}
+        {/* Audio Visualizer */}
+        <AudioVisualizer />
       </motion.div>
 
       {/* Header */}
