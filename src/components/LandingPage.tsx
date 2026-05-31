@@ -1,10 +1,11 @@
 import React from 'react';
-import { BookOpen, ArrowRight, BarChart3, Clock, Flame, Target, Trophy } from 'lucide-react';
+import { BookOpen, ArrowRight, BarChart3, Clock, Flame, Target, Trophy, Globe } from 'lucide-react';
 import { motion } from 'motion/react';
 import landingBg from '../assets/images/premium_landing_bg_1780054955872.png';
 import { CinematicBackground } from './CinematicBackground';
 import { getDailyQuote } from '../extras';
 import { Achievement } from '../types';
+import { useT } from '../i18n';
 
 interface Props {
   onStart: () => void;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount, holiday, achievements }: Props) {
+  const { t, lang, setLang } = useT();
   const quote = getDailyQuote();
   const earnedCount = achievements.filter(a => a.earned).length;
 
@@ -30,8 +32,9 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
       <header className="relative z-10 flex items-center justify-between px-8 py-6">
         <div className="flex items-center space-x-3"><BookOpen className="w-6 h-6" /><span className="text-xl font-medium tracking-wide">StudyWithMe AI</span></div>
         <nav className="flex items-center space-x-6 text-sm text-white/70">
-          <button onClick={onStats} className="hover:text-white transition-colors flex items-center space-x-1.5"><BarChart3 className="w-4 h-4" /><span>统计</span></button>
-          <button onClick={onHistory} className="hover:text-white transition-colors flex items-center space-x-1.5"><Clock className="w-4 h-4" /><span>历史</span></button>
+          <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="hover:text-white transition-colors flex items-center space-x-1.5"><Globe className="w-4 h-4" /><span>{lang === 'zh' ? 'EN' : '中'}</span></button>
+          <button onClick={onStats} className="hover:text-white transition-colors flex items-center space-x-1.5"><BarChart3 className="w-4 h-4" /><span>{t('stats')}</span></button>
+          <button onClick={onHistory} className="hover:text-white transition-colors flex items-center space-x-1.5"><Clock className="w-4 h-4" /><span>{t('history')}</span></button>
           {earnedCount > 0 && <div className="flex items-center space-x-1.5 text-amber-300"><Trophy className="w-4 h-4" /><span>{earnedCount}/{achievements.length}</span></div>}
         </nav>
       </header>
@@ -40,10 +43,10 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
           className="max-w-3xl w-full p-12 md:p-16 rounded-[3rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl text-center flex flex-col items-center">
 
-          <div className="text-sm font-medium tracking-[0.2em] text-white/70 mb-4 uppercase">Focus · Learn · Grow</div>
+          <div className="text-sm font-medium tracking-[0.2em] text-white/70 mb-4 uppercase">{t('tagline')}</div>
           {holiday && <div className="mb-4 px-4 py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-sm">{holiday.label}</div>}
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">开启你的沉浸自习室</h1>
-          <p className="text-lg md:text-xl text-white/80 mb-6 max-w-xl font-light leading-relaxed">选择场景、音乐与节奏，把一天最清醒的时间留给真正重要的学习。</p>
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">{t('hero')}</h1>
+          <p className="text-lg md:text-xl text-white/80 mb-6 max-w-xl font-light leading-relaxed">{t('heroSub')}</p>
 
           {/* Daily Quote */}
           <div className="mb-8 py-4 px-6 rounded-2xl bg-white/[0.02] border border-white/5 max-w-md">

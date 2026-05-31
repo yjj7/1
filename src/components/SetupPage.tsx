@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { BookOpen, Headphones, Volume2, ArrowRight, Upload, Music, Image, BarChart3, Clock, Target, Flame, Save, Star, Zap, Trash2 } from 'lucide-react';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from '../data';
 import { DailyGoal } from '../types';
+import { useT } from '../i18n';
 
 interface ScenePreset { id: string; sceneId: string; musicId: string; label: string; }
 
@@ -45,6 +46,7 @@ export function SetupPage(props: SetupPageProps) {
   } = props;
 
   const activeScene = SCENES.find(s => s.id === selectedSceneId) || SCENES[0];
+  const { t } = useT();
   const bgImage = selectedSceneId === 'custom' && customBgUrl ? customBgUrl : activeScene.imageUrl;
   const musicFileRef = useRef<HTMLInputElement>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
