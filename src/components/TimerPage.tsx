@@ -3,7 +3,7 @@ import { BookOpen, X, Play, Pause, SkipForward, RotateCcw, Target, Volume2, Move
 import { motion, AnimatePresence } from 'motion/react';
 import { Task, StudySession, Note, TimerMode, PomodoroPhase } from '../types';
 import { SCENES, MUSIC_TRACKS, NOISE_PRESETS } from '../data';
-import { audioManager } from '../audioManager';
+import { audioManager, playClickSound, playSuccessSound } from '../audioManager';
 import { CinematicBackground } from './CinematicBackground';
 import { SceneClock } from './SceneClock';
 
@@ -28,15 +28,23 @@ interface TimerPageProps {
   onRecordSession: (s: StudySession) => void;
   notes: Note[];
   onNotesChange: (v: Note[]) => void;
+  holiday: { id: string; label: string; emoji: string } | null;
 }
 
 export function TimerPage({
   sceneId, musicId, onSelectMusic, musicUrl, durationMinutes,
   musicVolume, onMusicVolumeChange, bgVolume, onBgVolumeChange, onExit,
   tasks, onTasksChange, pomodoroCount, onPomodoroComplete,
-  customMusicUrl, onCustomMusicChange, sceneImageUrl, onRecordSession, notes, onNotesChange,
+  customMusicUrl, onCustomMusicChange, sceneImageUrl, onRecordSession, notes, onNotesChange, holiday,
 }: TimerPageProps) {
   const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
+
+  // ============ Auto-start countdown (3-2-1) ============
+  const [countdown, setCountdown] = useState(0); // 3,2,1 or 0 (disabled)
+  const [breathingPhase, setBreathingPhase] = useState(0); // for glow pulse
+
+  // Background timer correction
+  const lastTickRef = useRef(Date.now());
 
   // Timer state
   const [timerMode, setTimerMode] = useState<TimerMode>('countdown');
@@ -59,6 +67,23 @@ export function TimerPage({
 
   // Note text
   const [noteText, setNoteText] = useState('');
+
+  // ============ Auto-start countdown ============
+  useEffect(() => {
+    setCountdown(3);
+    const t = setInterval(() => setCountdown(prev => {
+      if (prev <= 1) { clearInterval(t); return 0; }
+      return prev - 1;
+    }), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // ============ Breathing glow ============
+  useEffect(() => {
+    if (!isRunning || showCompletion) return;
+    const t = setInterval(() => setBreathingPhase(prev => (prev + 1) % 100), 50);
+    return () => clearInterval(t);
+  }, [isRunning, showCompletion]);
 
   // Notification setup
   useEffect(() => {
@@ -181,29 +206,32 @@ export function TimerPage({
     return () => window.removeEventListener('keydown', handler);
   }, [isImmersive, showCompletion, showShare]);
 
-  // Timer
+  // Timer with background correction
   useEffect(() => {
-    if (!isRunning || showCompletion) return;
+    if (!isRunning || showCompletion || countdown > 0) return;
+    lastTickRef.current = Date.now();
     const interval = setInterval(() => {
+      const now = Date.now();
+      const delta = Math.max(1, Math.round((now - lastTickRef.current) / 1000));
+      lastTickRef.current = now;
+
       if (timerMode === 'countdown') {
         setTimeLeft(prev => {
-          if (prev <= 1) {
+          const next = prev - delta;
+          if (next <= 0) {
             clearInterval(interval);
-            if (pomodoroPhase === 'study') {
-              handleFinish();
-            } else {
-              handleBreakFinish();
-            }
+            if (pomodoroPhase === 'study') handleFinish();
+            else handleBreakFinish();
             return 0;
           }
-          return prev - 1;
+          return next;
         });
       } else {
-        setTimeElapsed(prev => prev + 1);
+        setTimeElapsed(prev => prev + delta);
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [isRunning, timerMode, pomodoroPhase, handleFinish, handleBreakFinish, showCompletion]);
+  }, [isRunning, timerMode, pomodoroPhase, handleFinish, handleBreakFinish, showCompletion, countdown]);
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -243,6 +271,19 @@ export function TimerPage({
         <CinematicBackground imageUrl={sceneImageUrl} sceneId={sceneId} />
         <SceneClock />
         <div className={`absolute inset-0 transition-opacity duration-1000 z-10 ${isImmersive ? 'bg-black/0' : isBreak ? 'bg-emerald-900/30' : 'bg-black/10'}`} />
+
+        {/* Auto-start countdown overlay */}
+        {countdown > 0 && (
+          <motion.div
+            initial={{ scale: 2, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 2, opacity: 0 }}
+            key={countdown}
+            className="absolute inset-0 z-40 flex items-center justify-center bg-black/50"
+          >
+            <span className="text-[10rem] font-thin text-white/90 tabular-nums" style={{ textShadow: '0 0 80px rgba(255,255,255,0.3)' }}>
+              {countdown}
+            </span>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Header */}
@@ -294,7 +335,9 @@ export function TimerPage({
             </div>
           </div>
 
-          <div className="text-6xl font-light tracking-tight mb-4 tabular-nums">{formatTime(currentTime)}</div>
+          <div className="text-6xl font-light tracking-tight mb-4 tabular-nums"
+            style={{ textShadow: isRunning && !isBreak ? `0 0 ${Math.sin(breathingPhase / 100 * Math.PI) * 15}px rgba(255,255,255,${0.1 + Math.sin(breathingPhase / 100 * Math.PI) * 0.15})` : 'none' }}
+          >{formatTime(currentTime)}</div>
 
           {/* Timer mode toggle */}
           {!isBreak && (
@@ -384,7 +427,7 @@ export function TimerPage({
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <button onClick={() => setIsRunning(!isRunning)}
+                  <button onClick={() => { setIsRunning(!isRunning); playClickSound(); }}
                     className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-colors text-sm">
                     {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                     <span>{isRunning ? '暂停' : '继续'}</span>

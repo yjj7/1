@@ -6,8 +6,10 @@ import { TimerPage } from './components/TimerPage';
 import { LoadingScreen } from './components/LoadingScreen';
 import { StatsPage } from './components/StatsPage';
 import { HistoryPage } from './components/HistoryPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from './data';
 import { audioManager } from './audioManager';
+import { recommendScene, detectHoliday, holidayTheme } from './utils';
 
 function loadState<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) || '') ?? fallback; } catch { return fallback; }
@@ -20,8 +22,12 @@ export default function App() {
   const [loadingMusicVolume, setLoadingMusicVolume] = useState(50);
   const [loadingBgVolume, setLoadingBgVolume] = useState(30);
 
+  const holiday = detectHoliday();
+  const theme = holidayTheme(holiday?.id || null);
+  const autoScene = recommendScene();
+
   // Persisted preferences
-  const [selectedSceneId, setSelectedSceneId] = useState(() => loadState('swm_scene', SCENES[0].id));
+  const [selectedSceneId, setSelectedSceneId] = useState(() => loadState('swm_scene', autoScene));
   const [selectedMusicId, setSelectedMusicId] = useState(() => loadState('swm_music', MUSIC_TRACKS[0].id));
   const [musicVolume, setMusicVolume] = useState(() => loadState('swm_musicVol', 50));
   const [bgVolume, setBgVolume] = useState(() => loadState('swm_bgVol', 30));
@@ -35,16 +41,29 @@ export default function App() {
   const [notes, setNotes] = useState<Note[]>(() => loadState('swm_notes', []));
   const [streak, setStreak] = useState(() => loadState('swm_streak', 0));
 
-  // Persist on change
+  // Scene presets
+  const [scenePresets, setScenePresets] = useState<{ id: string; sceneId: string; musicId: string; label: string }[]>(
+    () => loadState('swm_presets', [])
+  );
+
+  // Persist
   useEffect(() => {
-    const data = {
+    const data: Record<string, any> = {
       swm_scene: selectedSceneId, swm_music: selectedMusicId,
       swm_musicVol: musicVolume, swm_bgVol: bgVolume,
       swm_duration: timerDuration, swm_tasks: tasks, swm_pomodoros: pomodoroCount,
-      swm_dailyGoal: dailyGoal, swm_history: studyHistory, swm_notes: notes, swm_streak: streak,
+      swm_dailyGoal: dailyGoal, swm_history: studyHistory, swm_notes: notes,
+      swm_streak: streak, swm_presets: scenePresets,
     };
     Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
-  }, [selectedSceneId, selectedMusicId, musicVolume, bgVolume, timerDuration, tasks, pomodoroCount, dailyGoal, studyHistory, notes, streak]);
+  }, [selectedSceneId, selectedMusicId, musicVolume, bgVolume, timerDuration, tasks, pomodoroCount, dailyGoal, studyHistory, notes, streak, scenePresets]);
+
+  // Register Service Worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
 
   // Update streak
   useEffect(() => {
@@ -61,14 +80,13 @@ export default function App() {
     }
   }, [studyHistory, dailyGoal, streak]);
 
-  const getMusicUrl = (musicId: string) => {
-    if (musicId === 'custom' && customMusicUrl) return customMusicUrl;
-    return MUSIC_TRACKS.find(m => m.id === musicId)?.audioUrl || '';
+  const getMusicUrl = (mId: string) => {
+    if (mId === 'custom' && customMusicUrl) return customMusicUrl;
+    return MUSIC_TRACKS.find(m => m.id === mId)?.audioUrl || '';
   };
-
-  const getSceneImageUrl = (sceneId: string) => {
-    if (sceneId === 'custom' && customBgUrl) return customBgUrl;
-    return SCENES.find(s => s.id === sceneId)?.imageUrl || SCENES[0].imageUrl;
+  const getSceneImageUrl = (sId: string) => {
+    if (sId === 'custom' && customBgUrl) return customBgUrl;
+    return SCENES.find(s => s.id === sId)?.imageUrl || SCENES[0].imageUrl;
   };
 
   const recordSession = useCallback((session: StudySession) => {
@@ -76,99 +94,113 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-white/30">
-      {appState === 'landing' && (
-        <LandingPage
-          onStart={() => setAppState('setup')}
-          onStats={() => setAppState('stats')}
-          onHistory={() => setAppState('history')}
-          streak={streak}
-          pomodoroCount={pomodoroCount}
-        />
-      )}
-      {appState === 'setup' && (
-        <SetupPage
-          selectedSceneId={selectedSceneId}
-          onSelectScene={setSelectedSceneId}
-          selectedMusicId={selectedMusicId}
-          onSelectMusic={setSelectedMusicId}
-          musicVolume={musicVolume}
-          onMusicVolumeChange={setMusicVolume}
-          bgVolume={bgVolume}
-          onBgVolumeChange={setBgVolume}
-          timerDuration={timerDuration}
-          onTimerDurationChange={setTimerDuration}
-          customMusicUrl={customMusicUrl}
-          onCustomMusicChange={setCustomMusicUrl}
-          customBgUrl={customBgUrl}
-          onCustomBgChange={(url) => { setCustomBgUrl(url); setSelectedSceneId('custom'); }}
-          dailyGoal={dailyGoal}
-          onDailyGoalChange={setDailyGoal}
-          onBack={() => setAppState('landing')}
-          onStats={() => setAppState('stats')}
-          onHistory={() => setAppState('history')}
-          onEnter={() => {
-            try { const s = new Audio(); s.play().then(() => s.pause()).catch(() => {}); } catch {}
-            audioManager.init();
-            setLoadingSceneId(selectedSceneId);
-            setLoadingMusicId(selectedMusicId);
-            setLoadingMusicVolume(musicVolume);
-            setLoadingBgVolume(bgVolume);
-            setAppState('loading');
-          }}
-        />
-      )}
-      {appState === 'loading' && (
-        <LoadingScreen
-          sceneId={loadingSceneId}
-          musicId={loadingMusicId}
-          musicUrl={getMusicUrl(loadingMusicId)}
-          musicVolume={loadingMusicVolume}
-          bgVolume={loadingBgVolume}
-          onReady={() => setAppState('timer')}
-        />
-      )}
-      {appState === 'timer' && (
-        <TimerPage
-          sceneId={selectedSceneId}
-          musicId={selectedMusicId}
-          onSelectMusic={setSelectedMusicId}
-          musicUrl={getMusicUrl(selectedMusicId)}
-          durationMinutes={timerDuration}
-          musicVolume={musicVolume}
-          onMusicVolumeChange={setMusicVolume}
-          bgVolume={bgVolume}
-          onBgVolumeChange={setBgVolume}
-          onExit={() => { audioManager.stop(); setAppState('landing'); }}
-          key={`${selectedSceneId}-${selectedMusicId}`}
-          tasks={tasks}
-          onTasksChange={setTasks}
-          pomodoroCount={pomodoroCount}
-          onPomodoroComplete={() => setPomodoroCount(prev => prev + 1)}
-          customMusicUrl={customMusicUrl}
-          onCustomMusicChange={setCustomMusicUrl}
-          sceneImageUrl={getSceneImageUrl(selectedSceneId)}
-          onRecordSession={recordSession}
-          notes={notes}
-          onNotesChange={setNotes}
-        />
-      )}
-      {appState === 'stats' && (
-        <StatsPage
-          studyHistory={studyHistory}
-          dailyGoal={dailyGoal}
-          streak={streak}
-          pomodoroCount={pomodoroCount}
-          onBack={() => setAppState('landing')}
-        />
-      )}
-      {appState === 'history' && (
-        <HistoryPage
-          studyHistory={studyHistory}
-          onBack={() => setAppState('landing')}
-          onClearHistory={() => { setStudyHistory([]); setStreak(0); setPomodoroCount(0); }}
-        />
-      )}
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-black text-white selection:bg-white/30">
+        {appState === 'landing' && (
+          <LandingPage
+            onStart={() => setAppState('setup')}
+            onStats={() => setAppState('stats')}
+            onHistory={() => setAppState('history')}
+            streak={streak}
+            pomodoroCount={pomodoroCount}
+            holiday={holiday}
+          />
+        )}
+        {appState === 'setup' && (
+          <SetupPage
+            selectedSceneId={selectedSceneId}
+            onSelectScene={setSelectedSceneId}
+            selectedMusicId={selectedMusicId}
+            onSelectMusic={setSelectedMusicId}
+            musicVolume={musicVolume}
+            onMusicVolumeChange={setMusicVolume}
+            bgVolume={bgVolume}
+            onBgVolumeChange={setBgVolume}
+            timerDuration={timerDuration}
+            onTimerDurationChange={setTimerDuration}
+            customMusicUrl={customMusicUrl}
+            onCustomMusicChange={setCustomMusicUrl}
+            customBgUrl={customBgUrl}
+            onCustomBgChange={(url) => { setCustomBgUrl(url); setSelectedSceneId('custom'); }}
+            dailyGoal={dailyGoal}
+            onDailyGoalChange={setDailyGoal}
+            scenePresets={scenePresets}
+            onSavePreset={(sId, mId, label) => {
+              setScenePresets(prev => [...prev, { id: Date.now().toString(), sceneId: sId, musicId: mId, label }]);
+            }}
+            onLoadPreset={(preset) => {
+              setSelectedSceneId(preset.sceneId);
+              setSelectedMusicId(preset.musicId);
+            }}
+            onDeletePreset={(id) => setScenePresets(prev => prev.filter(p => p.id !== id))}
+            recommendedScene={autoScene}
+            onBack={() => setAppState('landing')}
+            onStats={() => setAppState('stats')}
+            onHistory={() => setAppState('history')}
+            onEnter={() => {
+              try { const s = new Audio(); s.play().then(() => s.pause()).catch(() => {}); } catch {}
+              audioManager.init();
+              setLoadingSceneId(selectedSceneId);
+              setLoadingMusicId(selectedMusicId);
+              setLoadingMusicVolume(musicVolume);
+              setLoadingBgVolume(bgVolume);
+              setAppState('loading');
+            }}
+          />
+        )}
+        {appState === 'loading' && (
+          <LoadingScreen
+            sceneId={loadingSceneId}
+            musicId={loadingMusicId}
+            musicUrl={getMusicUrl(loadingMusicId)}
+            musicVolume={loadingMusicVolume}
+            bgVolume={loadingBgVolume}
+            onReady={() => setAppState('timer')}
+          />
+        )}
+        {appState === 'timer' && (
+          <TimerPage
+            sceneId={selectedSceneId}
+            musicId={selectedMusicId}
+            onSelectMusic={setSelectedMusicId}
+            musicUrl={getMusicUrl(selectedMusicId)}
+            durationMinutes={timerDuration}
+            musicVolume={musicVolume}
+            onMusicVolumeChange={setMusicVolume}
+            bgVolume={bgVolume}
+            onBgVolumeChange={setBgVolume}
+            onExit={() => { audioManager.stop(); setAppState('landing'); }}
+            key={`${selectedSceneId}-${selectedMusicId}`}
+            tasks={tasks}
+            onTasksChange={setTasks}
+            pomodoroCount={pomodoroCount}
+            onPomodoroComplete={() => setPomodoroCount(prev => prev + 1)}
+            customMusicUrl={customMusicUrl}
+            onCustomMusicChange={setCustomMusicUrl}
+            sceneImageUrl={getSceneImageUrl(selectedSceneId)}
+            onRecordSession={recordSession}
+            notes={notes}
+            onNotesChange={setNotes}
+            holiday={holiday}
+          />
+        )}
+        {appState === 'stats' && (
+          <StatsPage
+            studyHistory={studyHistory}
+            dailyGoal={dailyGoal}
+            streak={streak}
+            pomodoroCount={pomodoroCount}
+            onBack={() => setAppState('landing')}
+          />
+        )}
+        {appState === 'history' && (
+          <HistoryPage
+            studyHistory={studyHistory}
+            onBack={() => setAppState('landing')}
+            onClearHistory={() => { setStudyHistory([]); setStreak(0); setPomodoroCount(0); }}
+          />
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }

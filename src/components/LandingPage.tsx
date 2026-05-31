@@ -10,9 +10,10 @@ interface LandingPageProps {
   onHistory: () => void;
   streak: number;
   pomodoroCount: number;
+  holiday: { id: string; label: string; emoji: string } | null;
 }
 
-export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount }: LandingPageProps) {
+export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount, holiday }: LandingPageProps) {
   return (
     <div className="relative min-h-screen w-full flex flex-col text-white overflow-hidden font-sans">
       <motion.div className="absolute inset-0 z-0 bg-black" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5 }}>
@@ -41,6 +42,9 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
           className="max-w-3xl w-full p-12 md:p-16 rounded-[3rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl text-center flex flex-col items-center"
         >
           <div className="text-sm font-medium tracking-[0.2em] text-white/70 mb-4 uppercase">Focus · Learn · Grow</div>
+          {holiday && (
+            <div className="mb-4 px-4 py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-sm">{holiday.label}</div>
+          )}
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">开启你的沉浸自习室</h1>
           <p className="text-lg md:text-xl text-white/80 mb-6 max-w-xl font-light leading-relaxed">
             选择场景、音乐与节奏，把一天最清醒的时间留给真正重要的学习。

@@ -356,3 +356,37 @@ class AudioManager {
 }
 
 export const audioManager = new AudioManager();
+
+// Sound Effects
+let _sfxCtx: AudioContext | null = null;
+function getSfxCtx() { if (!_sfxCtx) _sfxCtx = new AudioContext(); if (_sfxCtx.state === 'suspended') _sfxCtx.resume(); return _sfxCtx; }
+
+export function playClickSound() {
+  try {
+    const ctx = getSfxCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.value = 1200;
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.1);
+  } catch {}
+}
+
+export function playSuccessSound() {
+  try {
+    const ctx = getSfxCtx();
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
+      gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + i * 0.12 + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+      osc.start(ctx.currentTime + i * 0.12); osc.stop(ctx.currentTime + i * 0.12 + 0.5);
+    });
+  } catch {}
+}
