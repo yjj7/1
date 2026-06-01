@@ -56,8 +56,8 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
 
           {(streak > 0 || pomodoroCount > 0) && (
             <div className="flex items-center space-x-6 mb-8">
-              {streak > 0 && <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-orange-500/20 border border-orange-500/30"><Flame className="w-4 h-4 text-orange-400" /><span className="text-sm text-orange-300">连续 {streak} 天</span></div>}
-              {pomodoroCount > 0 && <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-500/30"><Target className="w-4 h-4 text-green-400" /><span className="text-sm text-green-300">{pomodoroCount} 个番茄</span></div>}
+              {streak > 0 && <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-orange-500/20 border border-orange-500/30"><Flame className="w-4 h-4 text-orange-400" /><span className="text-sm text-orange-300">{t('streakNDays').replace('N', `${streak}`)}</span></div>}
+              {pomodoroCount > 0 && <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-500/30"><Target className="w-4 h-4 text-green-400" /><span className="text-sm text-green-300">{t('pomodoroCountN').replace('N', `${pomodoroCount}`)}</span></div>}
             </div>
           )}
 

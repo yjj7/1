@@ -119,7 +119,7 @@ export function TimerPage({
     onRecordSession({ id: Date.now().toString(), date: new Date().toISOString(), duration: dur, sceneId, tasksCompleted: completed, tasksTotal: tasks.length, timerMode });
     setShowCompletion(true); setIsRunning(false);
     onPomodoroComplete(); playSuccessSound();
-    sendNotification('🍅 学习完成！', `完成 ${Math.round(dur / 60)} 分钟学习，${completed}/${tasks.length} 任务`);
+    sendNotification(t('studyComplete'), `${t('studyCompleteDesc').replace('/','')} ${Math.round(dur / 60)} ${t('minutes')}${completed}/${tasks.length}`);
   }, [tasks, sceneId, timerMode, onRecordSession, onPomodoroComplete, sendNotification]);
 
   const handleBreakFinish = useCallback(() => {

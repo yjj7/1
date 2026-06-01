@@ -131,6 +131,20 @@ const translations: Record<Lang, Record<string, string>> = {
     noiseMixer: '白噪音混合器',
     timers: '时长',
     custom: '自定义',
+    // ErrorBoundary
+    errorTitle: '出了点问题',
+    unknownError: '未知错误',
+    reload: '重新加载',
+    // Stats deep
+    dailyGoalTitle: '今日目标',
+    needMoreMin: '还需 N 分钟',
+    autoStatsDesc: '完成学习后会自动显示你最高效的时间段',
+    streakNDays: '连续 N 天',
+    pomodoroCountN: 'N 个番茄',
+    achievementsTitle: '成就 (N)',
+    // Timer notifications
+    studyComplete: '🍅 学习完成！',
+    studyCompleteDesc: '分钟学习，/ 任务',
   },
   en: {
     appName: 'StudyWithMe AI',
@@ -254,6 +268,17 @@ const translations: Record<Lang, Record<string, string>> = {
     noiseMixer: 'Noise Mixer',
     timers: 'Timers',
     custom: 'Custom',
+    errorTitle: 'Something went wrong',
+    unknownError: 'Unknown error',
+    reload: 'Reload',
+    dailyGoalTitle: 'Today\'s Goal',
+    needMoreMin: 'Need N more min',
+    autoStatsDesc: 'Complete study sessions to reveal your most productive time slots',
+    streakNDays: 'N day streak',
+    pomodoroCountN: 'N pomodoros',
+    achievementsTitle: 'Achievements (N)',
+    studyComplete: '🍅 Study Complete!',
+    studyCompleteDesc: 'min study, / tasks',
   },
 };
 

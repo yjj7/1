@@ -88,12 +88,12 @@ export function SetupPage(props: SetupPageProps) {
               <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 01</span>
               <button onClick={() => { const r = SCENES[Math.floor(Math.random() * SCENES.length)]; onSelectScene(r.id); }}
                 className="flex items-center space-x-1 text-[10px] text-purple-400/80 hover:text-purple-300 transition-colors">
-                <span>🎲</span><span>随机场景</span>
+                <span>🎲</span><span>{t("randomScene")}</span>
               </button>
               {recommendedScene && (
                 <button onClick={() => onSelectScene(recommendedScene)}
                   className="flex items-center space-x-1 text-[10px] text-amber-400/80 hover:text-amber-300 transition-colors">
-                  <Zap className="w-3 h-3" /><span>推荐当前时段场景</span>
+                  <Zap className="w-3 h-3" /><span>{t("recommendScene")}</span>
                 </button>
               )}
             </div>
@@ -132,7 +132,7 @@ export function SetupPage(props: SetupPageProps) {
             {/* Saved Presets */}
             {scenePresets.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-sm font-medium text-white/50 mb-3 flex items-center space-x-2"><Star className="w-3.5 h-3.5" /><span>已保存的组合</span></h3>
+                <h3 className="text-sm font-medium text-white/50 mb-3 flex items-center space-x-2"><Star className="w-3.5 h-3.5" /><span>{t("savedPresets")}</span></h3>
                 <div className="flex flex-wrap gap-2">
                   {scenePresets.map(p => {
                     const ps = SCENES.find(s => s.id === p.sceneId);
@@ -155,12 +155,12 @@ export function SetupPage(props: SetupPageProps) {
           {/* Current combo + save */}
           <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium flex items-center space-x-2"><Save className="w-4 h-4 text-white/60" /><span>保存当前组合</span></span>
+              <span className="text-sm font-medium flex items-center space-x-2"><Save className="w-4 h-4 text-white/60" /><span>{t("savePreset")}</span></span>
             </div>
             <div className="flex space-x-2">
               <input value={presetLabel} onChange={(e) => setPresetLabel(e.target.value)} placeholder={t("comboPlaceholder")} className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 outline-none placeholder:text-white/20" />
               <button onClick={() => { if (currentScene && currentMusic) { onSavePreset(selectedSceneId, selectedMusicId, presetLabel || `${currentScene.title}+${currentMusic.title}`); setPresetLabel(''); } }}
-                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs">保存</button>
+                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs">{t("save")}</button>
             </div>
           </div>
 
@@ -178,7 +178,7 @@ export function SetupPage(props: SetupPageProps) {
                   <div className="mt-3">
                     <input ref={musicFileRef} type="file" accept="audio/*" onChange={handleMusicUpload} className="hidden" />
                     <button onClick={() => musicFileRef.current?.click()} className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg border border-dashed border-white/25 hover:border-white/50 hover:bg-white/5 transition-all text-xs text-white/60 hover:text-white"><Upload className="w-3.5 h-3.5" /><span>{customMusicUrl ? t('fileSelected') : t('uploadLocal')}</span></button>
-                    {customMusicUrl && <div className="flex items-center space-x-1.5 mt-2 text-[11px] text-green-400"><Music className="w-3 h-3" /><span>就绪</span></div>}
+                    {customMusicUrl && <div className="flex items-center space-x-1.5 mt-2 text-[11px] text-green-400"><Music className="w-3 h-3" /><span>{t("fileReady")}</span></div>}
                   </div>
                 )}
                 <div className="mt-3 relative h-6 flex items-center">
@@ -187,8 +187,8 @@ export function SetupPage(props: SetupPageProps) {
                 </div>
               </div>
               <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
-                <div className="flex items-center space-x-2 mb-1"><Volume2 className="w-4 h-4 text-white/60" /><span className="text-sm font-medium">背景音</span></div>
-                <p className="text-[11px] text-white/40 mb-3">根据场景自动匹配</p>
+                <div className="flex items-center space-x-2 mb-1"><Volume2 className="w-4 h-4 text-white/60" /><span className="text-sm font-medium">{t("bgAudio")}</span></div>
+                <p className="text-[11px] text-white/40 mb-3">{t("bgAuto")}</p>
                 <div className="relative h-6 flex items-center">
                   <div className="w-full h-1 bg-white/15 rounded-full relative"><div className="h-full bg-white/70 rounded-full transition-all" style={{ width: `${bgVolume}%` }} /><div className="w-3 h-3 bg-white rounded-full absolute -top-1 shadow transition-all" style={{ left: `${bgVolume}%`, marginLeft: '-6px' }} /></div>
                   <input type="range" min="0" max="100" value={bgVolume} onChange={(e) => onBgVolumeChange(Number(e.target.value))} className="w-full absolute opacity-0 cursor-pointer h-full" />
@@ -200,9 +200,9 @@ export function SetupPage(props: SetupPageProps) {
           {/* Daily Goal */}
           <div>
             <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 03</span>
-            <h2 className="text-xl font-medium mt-1 mb-3 flex items-center space-x-2"><Target className="w-5 h-5" /><span>每日目标</span></h2>
+            <h2 className="text-xl font-medium mt-1 mb-3 flex items-center space-x-2"><Target className="w-5 h-5" /><span>{t("stepGoal")}</span></h2>
             <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
-              <div className="flex items-center space-x-2 mb-3"><Flame className="w-4 h-4 text-orange-400" /><span className="text-sm">每日目标 {dailyGoal.targetMinutes} 分钟</span></div>
+              <div className="flex items-center space-x-2 mb-3"><Flame className="w-4 h-4 text-orange-400" /><span className="text-sm">每日目标 `{dailyGoal.targetMinutes} {t("minutes")}</span></div>
               <div className="grid grid-cols-3 gap-2">
                 {[60, 120, 180].map(min => (
                   <button key={min} onClick={() => onDailyGoalChange({ targetMinutes: min })} className={`py-2 rounded-lg border text-xs transition-all ${dailyGoal.targetMinutes === min ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>{min >= 60 ? `${min / 60}h` : `${min}m`}</button>
@@ -218,7 +218,7 @@ export function SetupPage(props: SetupPageProps) {
             <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10 flex-1 flex flex-col">
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {DURATIONS.map(dur => (
-                  <button key={dur} onClick={() => { onTimerDurationChange(dur); (document.getElementById('custom-time') as HTMLInputElement) && ((document.getElementById('custom-time') as HTMLInputElement).value = ''); }} className={`py-3 rounded-lg border text-sm transition-all ${timerDuration === dur ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>{dur} 分钟</button>
+                  <button key={dur} onClick={() => { onTimerDurationChange(dur); (document.getElementById('custom-time') as HTMLInputElement) && ((document.getElementById('custom-time') as HTMLInputElement).value = ''); }} className={`py-3 rounded-lg border text-sm transition-all ${timerDuration === dur ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>`{dur} {t("minutes")}</button>
                 ))}
                 <div className={`relative flex items-center rounded-lg border overflow-hidden ${![...DURATIONS].includes(timerDuration) ? 'bg-white/15 border-white' : 'border-white/15'}`}>
                   <input id="custom-time" type="number" placeholder={t("custom")} className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30" onChange={(e) => { const v = Number(e.target.value); if (v > 0) onTimerDurationChange(v); }} />
