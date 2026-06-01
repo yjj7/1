@@ -30,10 +30,22 @@ export interface StudySession {
   tasksCompleted: number;
   tasksTotal: number;
   timerMode: TimerMode;
+  boundTaskId?: string;
 }
 
 export interface DailyGoal {
   targetMinutes: number;
+}
+
+export interface UserSettings {
+  breakDuration: number;
+  longBreakDuration: number;
+  meditationEnabled: boolean;
+  meditationDuration: number;
+  clockVisible: boolean;
+  endChimeEnabled: boolean;
+  autoStartBreak: boolean;
+  dailyGoalMinutes: number;
 }
 
 export interface NoiseLayer {

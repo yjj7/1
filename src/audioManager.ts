@@ -81,7 +81,14 @@ class AudioManager {
   }
 
   // ---- Noise Mixer ----
+  private _noiseCount = 0;
+  private _maxNoise = 5;
+
   startNoise(id: string, volume: number) {
+    if (this._noiseCount >= this._maxNoise) {
+      console.warn(`[NoiseMixer] Max ${this._maxNoise} simultaneous noises reached, ignoring "${id}"`);
+      return;
+    }
     const ctx = getCtx();
     if (!noiseMasterGain) {
       noiseMasterGain = ctx.createGain();
@@ -137,6 +144,7 @@ class AudioManager {
     gain.connect(noiseMasterGain);
     src.start();
     noiseNodes.set(id, { source: src, gain, filter });
+    this._noiseCount++;
   }
 
   setNoiseVolume(id: string, volume: number) {
@@ -150,11 +158,25 @@ class AudioManager {
       try { n.source.stop(); } catch {}
       n.gain.disconnect();
       noiseNodes.delete(id);
+      this._noiseCount = Math.max(0, this._noiseCount - 1);
     }
   }
 
   stopAllNoise() {
     noiseNodes.forEach((_, id) => this.stopNoise(id));
+    this._noiseCount = 0;
+  }
+
+  // ---- Fade Transitions ----
+  fadeToScene(newMusicSrc: string, newBgSrc: string, duration = 0.8) {
+    if (musicGain) musicGain.gain.linearRampToValueAtTime(0, getCtx().currentTime + duration);
+    if (bgGain) bgGain.gain.linearRampToValueAtTime(0, getCtx().currentTime + duration);
+    setTimeout(() => { this.stopMusic(); this.stopBg(); }, duration * 1000);
+    setTimeout(() => {
+      this.setMusic(newMusicSrc);
+      this.setBg(newBgSrc);
+      setTimeout(() => this.play(), 150);
+    }, duration * 1000 + 100);
   }
 
   // ---- Music Player ----
@@ -387,6 +409,23 @@ export function playSuccessSound() {
       gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + i * 0.12 + 0.05);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
       osc.start(ctx.currentTime + i * 0.12); osc.stop(ctx.currentTime + i * 0.12 + 0.5);
+    });
+  } catch {}
+}
+
+export function playEndChime() {
+  try {
+    const ctx = getSfxCtx();
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.15;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      osc.start(t); osc.stop(t + 0.6);
     });
   } catch {}
 }
