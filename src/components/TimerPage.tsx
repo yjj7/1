@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, X, Play, Pause, Maximize, Clock, Waves, ChevronDown, GripVertical, Filter, Wind } from 'lucide-react';
+import { BookOpen, X, Play, Pause, Maximize, Clock, Waves, GripVertical, RotateCcw, SkipForward, Music } from 'lucide-react';
 import { Task, StudySession, Note, TimerMode, PomodoroPhase, TaskCategory } from '../types';
 import { SCENES, MUSIC_TRACKS, NOISE_PRESETS } from '../data';
 import { audioManager, playClickSound, playSuccessSound } from '../audioManager';
@@ -110,33 +110,36 @@ export function TimerPage({
     } catch { }
   }, []);
 
-  const recordAndFinish = () => {
+  const recordAndFinish = useCallback(() => {
     const dur = ((Date.now() - sessionStartRef.current) / 1000);
     const completed = tasks.filter(t => t.completed).length;
     onRecordSession({ id: Date.now().toString(), date: new Date().toISOString(), duration: dur, sceneId, tasksCompleted: completed, tasksTotal: tasks.length, timerMode });
     setShowCompletion(true); setIsRunning(false);
     onPomodoroComplete(); playSuccessSound();
     sendNotification('🍅 学习完成！', `完成 ${Math.round(dur / 60)} 分钟学习，${completed}/${tasks.length} 任务`);
-  };
+  }, [tasks, sceneId, timerMode, onRecordSession, onPomodoroComplete, sendNotification]);
 
   const handleBreakFinish = useCallback(() => {
     setPomodoroPhase('study'); setTimerMode('countdown'); setTimeLeft(durationMinutes * 60); setIsRunning(true);
     sessionStartRef.current = Date.now();
-    sendNotification('☕ 休息结束', '开始新的番茄钟吧');
+    sendNotification(t('breakEnd'), t('breakEndDesc'));
   }, [durationMinutes, sendNotification]);
+
+  // ============ Meditation countdown (runs independently) ============
+  useEffect(() => {
+    if (pomodoroPhase !== 'meditation') return;
+    const iv = setInterval(() => {
+      setMeditationTime(prev => {
+        if (prev <= 1) { setIsRunning(true); setPomodoroPhase('study'); sessionStartRef.current = Date.now(); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [pomodoroPhase]);
 
   // Timer with background correction
   useEffect(() => {
-    if (!isRunning || showCompletion) return;
-    if (pomodoroPhase === 'meditation') {
-      const iv = setInterval(() => {
-        setMeditationTime(prev => {
-          if (prev <= 1) { clearInterval(iv); setPomodoroPhase('study'); setIsRunning(true); sessionStartRef.current = Date.now(); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(iv);
-    }
+    if (!isRunning || showCompletion || pomodoroPhase === 'meditation') return;
     lastTickRef.current = Date.now();
     const interval = setInterval(() => {
       const now = Date.now();
@@ -151,7 +154,7 @@ export function TimerPage({
       } else { setTimeElapsed(prev => prev + delta); }
     }, 1000);
     return () => clearInterval(interval);
-  }, [isRunning, timerMode, pomodoroPhase, handleBreakFinish, showCompletion, isBreak]);
+  }, [isRunning, timerMode, pomodoroPhase, handleBreakFinish, recordAndFinish, showCompletion, isBreak]);
 
   // Immersive
   useEffect(() => {
@@ -236,11 +239,11 @@ export function TimerPage({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center">
             <div className="text-center p-10 rounded-[3rem] bg-white/[0.03] border border-white/10">
               <span className="text-6xl mb-4 block">🍅</span>
-              <h2 className="text-3xl font-medium mb-4">完成了！</h2>
-              <p className="text-white/60 mb-6">{pomodoroCount + 1} 个番茄完成</p>
+              <h2 className="text-3xl font-medium mb-4">{t('completed')}</h2>
+              <p className="text-white/60 mb-6">{pomodoroCount + 1} {t('pomodoroDone')}</p>
               <div className="flex space-x-4 justify-center">
-                <button onClick={() => { const dur = getBreakDuration(); setPomodoroPhase('shortBreak'); setTimerMode('countdown'); setTimeLeft(dur * 60); setIsRunning(true); setShowCompletion(false); setMeditationTime(0); sessionStartRef.current = Date.now(); }} className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm border border-white/20">☕ 短休息 5 分钟</button>
-                <button onClick={() => { setPomodoroPhase('longBreak'); setTimerMode('countdown'); setTimeLeft(15 * 60); setIsRunning(true); setShowCompletion(false); setMeditationTime(0); sessionStartRef.current = Date.now(); }} className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm border border-white/20">🛏️ 长休息 15 分钟</button>
+                <button onClick={() => { const dur = getBreakDuration(); setPomodoroPhase('shortBreak'); setTimerMode('countdown'); setTimeLeft(dur * 60); setIsRunning(true); setShowCompletion(false); setMeditationTime(0); sessionStartRef.current = Date.now(); }} className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm border border-white/20">{t('shortBreak')}</button>
+                <button onClick={() => { setPomodoroPhase('longBreak'); setTimerMode('countdown'); setTimeLeft(15 * 60); setIsRunning(true); setShowCompletion(false); setMeditationTime(0); sessionStartRef.current = Date.now(); }} className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm border border-white/20">{t('longBreak')}</button>
               </div>
               <button onClick={() => { setShowCompletion(false); onExit(); }} className="mt-4 text-sm text-white/40 hover:text-white/60 transition-colors">{t('backToHome')}</button>
             </div>
@@ -282,9 +285,12 @@ export function TimerPage({
               <BookOpen className="w-5 h-5" /><span className="text-lg font-medium tracking-wide">{t('appName')}</span>
               <span className="text-sm text-white/40 hidden md:inline">{scene.title}</span>
             </div>
-            <button onClick={() => toggleImmersive(true)} className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition-colors text-sm">
-              <Maximize className="w-4 h-4" /><span>{t('immersive')}</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button onClick={() => setShowNoiseMixer(prev => !prev)} className={`p-2 rounded-full border transition-colors text-sm ${showNoiseMixer ? 'bg-white/15 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'}`} title="Noise mixer"><Music className="w-4 h-4" /></button>
+              <button onClick={() => toggleImmersive(true)} className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition-colors text-sm">
+                <Maximize className="w-4 h-4" /><span>{t('immersive')}</span>
+              </button>
+            </div>
           </motion.header>
         )}
       </AnimatePresence>
@@ -304,11 +310,11 @@ export function TimerPage({
           <div className="text-6xl font-light tracking-tight mb-4 tabular-nums" style={glowStyle}>{fmt(currentTime)}</div>
           <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2"><div className={`h-full rounded-full transition-all duration-1000 ${isBreak ? 'bg-emerald-500' : timeLeft <= 30 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${timePercent}%` }} /></div>
           <div className="flex justify-center space-x-4 mt-4">
-            <button onClick={() => { setIsRunning(false); setTimeLeft(durationMinutes * 60); setTimerMode('countdown'); }} className="p-2 rounded-full hover:bg-white/10 transition-colors"><Pause className="w-5 h-5" /></button>
+            <button onClick={() => { setIsRunning(false); setTimeLeft(durationMinutes * 60); }} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Reset"><RotateCcw className="w-5 h-5" /></button>
             <button onClick={() => { setIsRunning(!isRunning); playClickSound(); }} className="p-3 rounded-full bg-white hover:bg-white/90 transition-colors">
               {isRunning ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
             </button>
-            {isBreak && <button onClick={handleBreakFinish} className="p-2 rounded-full hover:bg-white/10 transition-colors"><Pause className="w-5 h-5" /></button>}
+            {isBreak && <button onClick={handleBreakFinish} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Skip break"><SkipForward className="w-5 h-5" /></button>}
           </div>
         </motion.div>
 

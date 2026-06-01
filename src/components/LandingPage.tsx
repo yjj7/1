@@ -71,7 +71,7 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
           )}
 
           <button onClick={onStart} className="flex items-center justify-center space-x-2 px-10 py-5 rounded-full border border-white/20 bg-white/[0.05] hover:bg-white/10 transition-all group w-fit shadow-lg shadow-white/5">
-            <span className="text-lg">开始学习</span><ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+            <span className="text-lg">{t('startBtn')}</span><ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
           </button>
         </motion.div>
       </main>
@@ -79,11 +79,11 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
       <footer className="relative z-10 py-8 px-8 md:px-24 border-t border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-t from-black/60 to-transparent">
         <div className="mb-6 md:mb-0">
           <div className="flex items-center space-x-3 mb-3"><BookOpen className="w-5 h-5 text-white/80" /><span className="text-lg text-white/80 font-medium">StudyWithMe AI</span></div>
-          <p className="text-sm text-white/50 max-w-md">结合沉浸式场景、专注音乐与智能计划。让每一次学习都更专心。</p>
+          <p className="text-sm text-white/50 max-w-md">{t('footerDesc')}</p>
         </div>
         <div className="flex gap-16 text-sm">
-          <div className="flex flex-col space-y-3 text-white/60"><span className="text-white font-medium mb-1">产品</span><button onClick={onStart} className="text-left hover:text-white transition-colors">场景</button><button onClick={onStart} className="text-left hover:text-white transition-colors">音乐</button></div>
-          <div className="flex flex-col space-y-3 text-white/60"><span className="text-white font-medium mb-1">数据</span><button onClick={onStats} className="text-left hover:text-white transition-colors">学习统计</button><button onClick={onHistory} className="text-left hover:text-white transition-colors">学习历史</button></div>
+          <div className="flex flex-col space-y-3 text-white/60"><span className="text-white font-medium mb-1">{t('productLabel')}</span><button onClick={onStart} className="text-left hover:text-white transition-colors">{t('sceneLabel')}</button><button onClick={onStart} className="text-left hover:text-white transition-colors">{t('musicLabel')}</button></div>
+          <div className="flex flex-col space-y-3 text-white/60"><span className="text-white font-medium mb-1">{t('dataLabel')}</span><button onClick={onStats} className="text-left hover:text-white transition-colors">{t('studyStatsLabel')}</button><button onClick={onHistory} className="text-left hover:text-white transition-colors">{t('studyHistoryLabel')}</button></div>
         </div>
       </footer>
     </div>
