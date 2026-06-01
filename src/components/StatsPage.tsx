@@ -79,23 +79,6 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
     } catch { alert('导出失败，请稍后再试'); }
   };
 
-  const exportJSON = () => {
-    const data = {
-      studyHistory,
-      dailyGoal,
-      streak,
-      pomodoroCount,
-      achievements: achievements.map(a => ({ id: a.id, title: a.title, earned: a.earned })),
-      exportedAt: new Date().toISOString(),
-      version: '2.3',
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `studywithme-data-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click(); URL.revokeObjectURL(a.href);
-  };
-
   return (
     <div className="relative min-h-screen w-full bg-black text-white font-sans overflow-y-auto" ref={cardRef}>
       <div className="fixed inset-0 z-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
@@ -104,10 +87,7 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
           <button onClick={onBack} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors mr-4"><ArrowLeft className="w-5 h-5" /></button>
           <BookOpen className="w-5 h-5 mr-3" /><span className="text-lg font-medium tracking-wide">{t('studyStats')}</span>
         </div>
-        <div className="flex items-center space-x-2">
-          <button onClick={exportPNG} className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs"><Download className="w-3.5 h-3.5" /><span>{t('exportReport')}</span></button>
-          <button onClick={exportJSON} className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs" title={t('exportData')}><Download className="w-3.5 h-3.5" /><span>{t('exportData')}</span></button>
-        </div>
+        <button onClick={exportPNG} className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs"><Download className="w-3.5 h-3.5" /><span>{t('exportReport')}</span></button>
       </header>
 
       <main className="relative z-10 max-w-5xl mx-auto px-4 md:px-10 pb-12">

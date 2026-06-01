@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, X, Play, Pause, Maximize, Clock, Waves, GripVertical, RotateCcw, SkipForward, Music } from 'lucide-react';
-import { Task, StudySession, Note, TimerMode, PomodoroPhase, TaskCategory, UserSettings } from '../types';
+import { Task, StudySession, Note, TimerMode, PomodoroPhase, TaskCategory } from '../types';
 import { SCENES, MUSIC_TRACKS, NOISE_PRESETS } from '../data';
-import { audioManager, playClickSound, playSuccessSound, playEndChime } from '../audioManager';
+import { audioManager, playClickSound, playSuccessSound } from '../audioManager';
 import { CinematicBackground } from './CinematicBackground';
 import { SceneClock } from './SceneClock';
 import { AudioVisualizer } from './AudioVisualizer';
@@ -19,26 +19,26 @@ interface TimerPageProps {
   pomodoroCount: number; onPomodoroComplete: () => void;
   customMusicUrl: string; onCustomMusicChange: (url: string) => void;
   sceneImageUrl: string; onRecordSession: (s: StudySession) => void;
-  settings: UserSettings;
-  wakeLock: any; onWakeLockChange: (w: any) => void;
+  notes: Note[]; onNotesChange: (v: Note[]) => void;
+  holiday: { id: string; label: string; emoji: string } | null;
 }
+
+const MEDITATION_SECONDS = 30;
 
 export function TimerPage({
   sceneId, musicId, onSelectMusic, musicUrl, durationMinutes,
   musicVolume, onMusicVolumeChange, bgVolume, onBgVolumeChange, onExit,
   tasks, onTasksChange, pomodoroCount, onPomodoroComplete,
-  customMusicUrl, onCustomMusicChange, sceneImageUrl, onRecordSession,
-  settings, wakeLock, onWakeLockChange,
+  customMusicUrl, onCustomMusicChange, sceneImageUrl, onRecordSession, notes, onNotesChange, holiday,
 }: TimerPageProps) {
   const { t } = useT();
   const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
-  const [boundTaskId, setBoundTaskId] = useState<string | null>(null);
 
   // States
   const [pomodoroPhase, setPomodoroPhase] = useState<PomodoroPhase>('meditation');
   const isBreak = ['shortBreak', 'longBreak'].includes(pomodoroPhase);
   const [timerMode, setTimerMode] = useState<TimerMode>('countdown');
-  const [meditationTime, setMeditationTime] = useState(meditationSeconds);
+  const [meditationTime, setMeditationTime] = useState(MEDITATION_SECONDS);
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -56,13 +56,12 @@ export function TimerPage({
 
   // Panels
   const [showNoiseMixer, setShowNoiseMixer] = useState(false);
-  const pendingTouch = useRef<{ time: number } | null>(null);
   const [noiseVolumes, setNoiseVolumes] = useState<Record<string, number>>({});
 
   // Breathing animation for meditation
   useEffect(() => {
     if (pomodoroPhase !== 'meditation' || meditationTime <= 0) return;
-    const total = meditationSeconds;
+    const total = MEDITATION_SECONDS;
     const cycle = 6; // 6s per cycle
     const iv = setInterval(() => {
       const elapsed = total - meditationTime + 1;
@@ -81,23 +80,6 @@ export function TimerPage({
     return () => clearInterval(t);
   }, [isRunning, showCompletion]);
 
-  // Wake Lock
-  useEffect(() => {
-    if (!isRunning || pomodoroPhase !== 'study') return;
-    const req = async () => {
-      try {
-        if ('wakeLock' in navigator && !wakeLock) {
-          const wl = await (navigator as any).wakeLock.request('screen');
-          onWakeLockChange(wl);
-        }
-      } catch {}
-    };
-    req();
-    return () => {
-      if (wakeLock) { try { wakeLock.release?.().catch(() => {}); } catch {} onWakeLockChange(null); }
-    };
-  }, [isRunning, pomodoroPhase]);
-
   // Notification permission
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
@@ -113,8 +95,7 @@ export function TimerPage({
   useEffect(() => { if (scene.audioUrl) { audioManager.setBg(scene.audioUrl); if (isRunning) audioManager.play(); } }, [scene.audioUrl]);
   useEffect(() => { isRunning ? audioManager.play() : audioManager.pause(); }, [isRunning]);
 
-  const getBreakDuration = () => pomodoroCount > 0 && pomodoroCount % 4 === 0 ? settings.longBreakDuration : settings.breakDuration;
-  const meditationSeconds = settings.meditationEnabled ? settings.meditationDuration : 0;
+  const getBreakDuration = () => pomodoroCount > 0 && pomodoroCount % 4 === 0 ? 15 : 5;
 
   const playMeditationChime = useCallback(() => {
     try {
@@ -135,10 +116,9 @@ export function TimerPage({
   const recordAndFinish = useCallback(() => {
     const dur = ((Date.now() - sessionStartRef.current) / 1000);
     const completed = tasks.filter(t => t.completed).length;
-    onRecordSession({ id: Date.now().toString(), date: new Date().toISOString(), duration: dur, sceneId, tasksCompleted: completed, tasksTotal: tasks.length, timerMode, boundTaskId: boundTaskId || undefined });
+    onRecordSession({ id: Date.now().toString(), date: new Date().toISOString(), duration: dur, sceneId, tasksCompleted: completed, tasksTotal: tasks.length, timerMode });
     setShowCompletion(true); setIsRunning(false);
-    onPomodoroComplete();
-    if (settings.endChimeEnabled) { try { playEndChime(); } catch {} } else { playSuccessSound(); }
+    onPomodoroComplete(); playSuccessSound();
     sendNotification(t('studyComplete'), `${t('studyCompleteDesc').replace('/','')} ${Math.round(dur / 60)} ${t('minutes')}${completed}/${tasks.length}`);
   }, [tasks, sceneId, timerMode, onRecordSession, onPomodoroComplete, sendNotification]);
 
@@ -221,7 +201,7 @@ export function TimerPage({
 
   const fmt = (s: number) => { const m = Math.floor(s / 60); const sec = s % 60; return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`; };
   const currentTotal = isBreak ? getBreakDuration() * 60 : durationMinutes * 60;
-  const timePercent = pomodoroPhase === 'meditation' ? (meditationSeconds - meditationTime) / meditationSeconds * 100 : Math.min(100, ((currentTotal - timeLeft) / currentTotal) * 100);
+  const timePercent = pomodoroPhase === 'meditation' ? (MEDITATION_SECONDS - meditationTime) / MEDITATION_SECONDS * 100 : Math.min(100, ((currentTotal - timeLeft) / currentTotal) * 100);
 
   const isEnding = pomodoroPhase === 'study' && timerMode === 'countdown' && timeLeft <= 10 && timeLeft > 0;
   const glowStyle = isRunning && !isBreak && !showCompletion
@@ -235,7 +215,7 @@ export function TimerPage({
   if (showMinimalClock) {
     return (
       <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center cursor-pointer" onClick={() => setShowMinimalClock(false)}>
-        {settings.clockVisible && <SceneClock />}
+        <SceneClock />
         <span className="text-[10rem] font-thin text-white tabular-nums mt-8" style={glowStyle}>{fmt(timeLeft)}</span>
         <span className="text-sm text-white/20 mt-4">{t('backToHome')}</span>
         {/* Countdown gradient overlay */}
@@ -245,17 +225,10 @@ export function TimerPage({
   }
 
   return (
-    <div className={`relative min-h-screen w-full flex flex-col text-white font-sans overflow-hidden ${isImmersive && !showImmersiveUI ? 'cursor-none' : ''}`}
-      onTouchStart={(e) => { pendingTouch.current = { time: Date.now() }; }}
-      onTouchEnd={() => {
-        const p = pendingTouch.current;
-        if (p && Date.now() - p.time < 300 && isImmersive) { toggleImmersive(false); playClickSound(); }
-        pendingTouch.current = null;
-      }}
-    >
+    <div className={`relative min-h-screen w-full flex flex-col text-white font-sans overflow-hidden ${isImmersive && !showImmersiveUI ? 'cursor-none' : ''}`}>
       <motion.div key={scene.id} className="absolute inset-0 z-0 bg-black" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5 }}>
         <CinematicBackground imageUrl={sceneImageUrl} sceneId={scene.id} />
-        {settings.clockVisible && <SceneClock />}
+        <SceneClock />
         <div className={`absolute inset-0 transition-all duration-[10s] z-10 ${isImmersive ? 'bg-black/0' : isBreak ? 'bg-emerald-900/30' : isEnding ? `bg-gradient-to-t from-white/[0.02] to-transparent` : 'bg-black/10'}`}
           style={isEnding ? { opacity: (10 - timeLeft) / 10 * 0.5 } : {}} />
         <AudioVisualizer />
@@ -312,15 +285,9 @@ export function TimerPage({
               <button onClick={onExit} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors border border-white/20"><X className="w-4 h-4" /></button>
               <BookOpen className="w-5 h-5" /><span className="text-lg font-medium tracking-wide">{t('appName')}</span>
               <span className="text-sm text-white/40 hidden md:inline">{scene.title}</span>
-              {boundTaskId && tasks.find(tk => tk.id === boundTaskId) && (
-                <span className="text-xs text-yellow-400/80 hidden md:inline" title={t('boundTask')}>🎯 {tasks.find(tk => tk.id === boundTaskId)!.text}</span>
-              )}
             </div>
             <div className="flex items-center space-x-2">
               <button onClick={() => setShowNoiseMixer(prev => !prev)} className={`p-2 rounded-full border transition-colors text-sm ${showNoiseMixer ? 'bg-white/15 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'}`} title="Noise mixer"><Music className="w-4 h-4" /></button>
-              <button onClick={() => { const sel = document.querySelector('.task-bind-select') as HTMLSelectElement; if (sel?.value) { setBoundTaskId(sel.value); playClickSound(); } }} className="flex items-center space-x-1 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs" title={t('bindHint')}>
-                <span>{boundTaskId ? t('currentTask') : t('bindTask')}</span>
-              </button>
               <button onClick={() => toggleImmersive(true)} className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition-colors text-sm">
                 <Maximize className="w-4 h-4" /><span>{t('immersive')}</span>
               </button>
@@ -376,7 +343,6 @@ export function TimerPage({
                     {tk.completed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
                   </button>
                   <span className={`text-xs flex-1 truncate ${tk.completed ? 'line-through text-white/25' : 'text-white/70'}`}>{tk.text}</span>
-                  <button onClick={() => { if (boundTaskId === tk.id) setBoundTaskId(null); else setBoundTaskId(tk.id); playClickSound(); }} className={`flex-shrink-0 w-2 h-2 rounded-full transition-colors ${boundTaskId === tk.id ? 'bg-yellow-400 ring-1 ring-yellow-400/30' : 'bg-white/10 hover:bg-white/20'}`} title={boundTaskId === tk.id ? t('boundTask') : t('bindHint')} />
                   <button onClick={() => removeTask(tk.id)} className="text-white/15 hover:text-red-400 transition-colors flex-shrink-0"><X className="w-3 h-3" /></button>
                 </li>
               ))}
