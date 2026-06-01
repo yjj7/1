@@ -200,7 +200,8 @@ export function TimerPage({
   const handleDragEnd = () => setDragIdx(null);
 
   const fmt = (s: number) => { const m = Math.floor(s / 60); const sec = s % 60; return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`; };
-  const timePercent = pomodoroPhase === 'meditation' ? (MEDITATION_SECONDS - meditationTime) / MEDITATION_SECONDS * 100 : Math.min(100, ((totalTime - timeLeft) / totalTime) * 100);
+  const currentTotal = isBreak ? getBreakDuration() * 60 : durationMinutes * 60;
+  const timePercent = pomodoroPhase === 'meditation' ? (MEDITATION_SECONDS - meditationTime) / MEDITATION_SECONDS * 100 : Math.min(100, ((currentTotal - timeLeft) / currentTotal) * 100);
 
   const isEnding = pomodoroPhase === 'study' && timerMode === 'countdown' && timeLeft <= 10 && timeLeft > 0;
   const glowStyle = isRunning && !isBreak && !showCompletion
