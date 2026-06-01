@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from 'react';
 import { BookOpen, ArrowLeft, Flame, Target, TrendingUp, Calendar, Clock, Award, Download, Trophy } from 'lucide-react';
 import { StudySession, DailyGoal, Achievement } from '../types';
 import { analyzeTimeSlots } from '../extras';
+import { useT } from '../i18n';
 
 interface Props {
   studyHistory: StudySession[];
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achievements, onBack }: Props) {
+  const { t } = useT();
   const cardRef = useRef<HTMLDivElement>(null);
   const earnedCount = achievements.filter(a => a.earned).length;
 
@@ -83,15 +85,15 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
       <header className="relative z-10 flex items-center justify-between px-6 md:px-10 py-4">
         <div className="flex items-center">
           <button onClick={onBack} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors mr-4"><ArrowLeft className="w-5 h-5" /></button>
-          <BookOpen className="w-5 h-5 mr-3" /><span className="text-lg font-medium tracking-wide">学习统计</span>
+          <BookOpen className="w-5 h-5 mr-3" /><span className="text-lg font-medium tracking-wide">{t('studyStats')}</span>
         </div>
-        <button onClick={exportPNG} className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs"><Download className="w-3.5 h-3.5" /><span>导出报告</span></button>
+        <button onClick={exportPNG} className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs"><Download className="w-3.5 h-3.5" /><span>{t('exportReport')}</span></button>
       </header>
 
       <main className="relative z-10 max-w-5xl mx-auto px-4 md:px-10 pb-12">
         {/* Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[{ i: <Clock className="w-5 h-5 text-blue-400" />, l: '总学习时长', v: `${Math.floor(stats.totalMinutes / 60)}h ${Math.round(stats.totalMinutes % 60)}m` }, { i: <Target className="w-5 h-5 text-green-400" />, l: '完成番茄', v: `${pomodoroCount}` }, { i: <Flame className="w-5 h-5 text-orange-400" />, l: '连续打卡', v: `${streak} 天` }, { i: <TrendingUp className="w-5 h-5 text-purple-400" />, l: '本周学习', v: `${Math.round(stats.weekMinutes)} min` }].map((c, i) => (
+          {[{ i: <Clock className="w-5 h-5 text-blue-400" />, l: t('totalTime'), v: `${Math.floor(stats.totalMinutes / 60)}h ${Math.round(stats.totalMinutes % 60)}m` }, { i: <Target className="w-5 h-5 text-green-400" />, l: t('pomodoros'), v: `${pomodoroCount}` }, { i: <Flame className="w-5 h-5 text-orange-400" />, l: t('streakDays'), v: `${streak} 天` }, { i: <TrendingUp className="w-5 h-5 text-purple-400" />, l: t('weekStudy'), v: `${Math.round(stats.weekMinutes)} min` }].map((c, i) => (
             <div key={i} className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10"><div className="flex items-center space-x-2 mb-2">{c.i}<span className="text-xs text-white/50">{c.l}</span></div><div className="text-2xl font-light">{c.v}</div></div>
           ))}
         </div>

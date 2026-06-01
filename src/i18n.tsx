@@ -85,6 +85,10 @@ const translations: Record<Lang, Record<string, string>> = {
     studyHistoryLabel: '学习历史',
     breakEnd: '☕ 休息结束',
     breakEndDesc: '开始新的番茄钟吧',
+    // StatsPage
+    exportFailed: '导出失败，请稍后再试',
+    locked: '尚未解锁',
+    autoStats: '完成学习后会自动统计',
     // SetupPage
     homePage: '首页',
     uploadBg: '上传背景图',
@@ -210,6 +214,9 @@ const translations: Record<Lang, Record<string, string>> = {
     studyHistoryLabel: 'Study History',
     breakEnd: '☕ Break over',
     breakEndDesc: 'Start your next pomodoro',
+    exportFailed: 'Export failed, please try again',
+    locked: 'Locked',
+    autoStats: 'Stats appear after completing study sessions',
     homePage: 'Home',
     uploadBg: 'Upload Background',
     customBgReady: 'Custom BG ✓',

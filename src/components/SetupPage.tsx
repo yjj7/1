@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+﻿import React, { useRef } from 'react';
 import { BookOpen, Headphones, Volume2, ArrowRight, Upload, Music, Image, BarChart3, Clock, Target, Flame, Save, Star, Zap, Trash2 } from 'lucide-react';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from '../data';
 import { DailyGoal } from '../types';
@@ -73,10 +73,10 @@ export function SetupPage(props: SetupPageProps) {
       <header className="relative z-10 flex items-center px-6 md:px-10 py-4 shrink-0">
         <div className="flex items-center space-x-3"><BookOpen className="w-5 h-5" /><span className="text-lg font-medium tracking-wide">StudyWithMe AI</span></div>
         <nav className="ml-10 flex space-x-5 text-sm text-white/60">
-          <button onClick={onBack} className="hover:text-white transition-colors">首页</button>
-          <span className="text-white font-medium">场景</span>
-          <button onClick={onStats} className="hover:text-white transition-colors flex items-center space-x-1"><BarChart3 className="w-3.5 h-3.5" /><span>统计</span></button>
-          <button onClick={onHistory} className="hover:text-white transition-colors flex items-center space-x-1"><Clock className="w-3.5 h-3.5" /><span>历史</span></button>
+          <button onClick={onBack} className="hover:text-white transition-colors">{t("homePage")}</button>
+          <span className="text-white font-medium">{t("scene")}</span>
+          <button onClick={onStats} className="hover:text-white transition-colors flex items-center space-x-1"><BarChart3 className="w-3.5 h-3.5" /><span>{t("stats")}</span></button>
+          <button onClick={onHistory} className="hover:text-white transition-colors flex items-center space-x-1"><Clock className="w-3.5 h-3.5" /><span>{t("history")}</span></button>
         </nav>
       </header>
 
@@ -124,7 +124,7 @@ export function SetupPage(props: SetupPageProps) {
                 <input ref={bgFileRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden" />
                 <button onClick={() => bgFileRef.current?.click()} className="flex-1 flex flex-col items-center justify-center p-6 aspect-[16/10]">
                   <Image className="w-8 h-8 text-white/40 mb-2" />
-                  <span className="text-xs text-white/50">{customBgUrl ? '自定义背景 ✓' : '上传背景图'}</span>
+                  <span className="text-xs text-white/50">{customBgUrl ? t('customBgReady') : t('uploadBg')}</span>
                 </button>
               </div>
             </div>
@@ -158,7 +158,7 @@ export function SetupPage(props: SetupPageProps) {
               <span className="text-sm font-medium flex items-center space-x-2"><Save className="w-4 h-4 text-white/60" /><span>保存当前组合</span></span>
             </div>
             <div className="flex space-x-2">
-              <input value={presetLabel} onChange={(e) => setPresetLabel(e.target.value)} placeholder="组合名 (如: 晨间学习)" className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 outline-none placeholder:text-white/20" />
+              <input value={presetLabel} onChange={(e) => setPresetLabel(e.target.value)} placeholder={t("comboPlaceholder")} className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 outline-none placeholder:text-white/20" />
               <button onClick={() => { if (currentScene && currentMusic) { onSavePreset(selectedSceneId, selectedMusicId, presetLabel || `${currentScene.title}+${currentMusic.title}`); setPresetLabel(''); } }}
                 className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs">保存</button>
             </div>
@@ -170,14 +170,14 @@ export function SetupPage(props: SetupPageProps) {
             <h2 className="text-xl font-medium mt-1 mb-3">声音氛围</h2>
             <div className="space-y-3">
               <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
-                <div className="flex items-center space-x-2 mb-3"><Headphones className="w-4 h-4 text-white/60" /><span className="text-sm font-medium">音乐</span></div>
+                <div className="flex items-center space-x-2 mb-3"><Headphones className="w-4 h-4 text-white/60" /><span className="text-sm font-medium">{t("music")}</span></div>
                 <select value={selectedMusicId} onChange={(e) => onSelectMusic(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 outline-none cursor-pointer">
                   {MUSIC_TRACKS.map(m => <option key={m.id} value={m.id} className="text-black">{m.title}</option>)}
                 </select>
                 {selectedMusicId === 'custom' && (
                   <div className="mt-3">
                     <input ref={musicFileRef} type="file" accept="audio/*" onChange={handleMusicUpload} className="hidden" />
-                    <button onClick={() => musicFileRef.current?.click()} className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg border border-dashed border-white/25 hover:border-white/50 hover:bg-white/5 transition-all text-xs text-white/60 hover:text-white"><Upload className="w-3.5 h-3.5" /><span>{customMusicUrl ? '已选择文件' : '上传本地音乐'}</span></button>
+                    <button onClick={() => musicFileRef.current?.click()} className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg border border-dashed border-white/25 hover:border-white/50 hover:bg-white/5 transition-all text-xs text-white/60 hover:text-white"><Upload className="w-3.5 h-3.5" /><span>{customMusicUrl ? t('fileSelected') : t('uploadLocal')}</span></button>
                     {customMusicUrl && <div className="flex items-center space-x-1.5 mt-2 text-[11px] text-green-400"><Music className="w-3 h-3" /><span>就绪</span></div>}
                   </div>
                 )}
@@ -221,7 +221,7 @@ export function SetupPage(props: SetupPageProps) {
                   <button key={dur} onClick={() => { onTimerDurationChange(dur); (document.getElementById('custom-time') as HTMLInputElement) && ((document.getElementById('custom-time') as HTMLInputElement).value = ''); }} className={`py-3 rounded-lg border text-sm transition-all ${timerDuration === dur ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>{dur} 分钟</button>
                 ))}
                 <div className={`relative flex items-center rounded-lg border overflow-hidden ${![...DURATIONS].includes(timerDuration) ? 'bg-white/15 border-white' : 'border-white/15'}`}>
-                  <input id="custom-time" type="number" placeholder="自定义" className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30" onChange={(e) => { const v = Number(e.target.value); if (v > 0) onTimerDurationChange(v); }} />
+                  <input id="custom-time" type="number" placeholder={t("custom")} className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30" onChange={(e) => { const v = Number(e.target.value); if (v > 0) onTimerDurationChange(v); }} />
                   <span className="absolute right-3 text-xs text-white/40 pointer-events-none">min</span>
                 </div>
               </div>
