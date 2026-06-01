@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { audioManager } from '../audioManager';
 import { SCENES, MUSIC_TRACKS } from '../data';
+import { useT } from '../i18n';
 
 interface LoadingScreenProps {
   sceneId: string;
@@ -15,8 +16,8 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
   const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
   const musicTrack = MUSIC_TRACKS.find(m => m.id === musicId) || MUSIC_TRACKS[0];
   const [phase, setPhase] = useState<'image' | 'audio' | 'ready'>('image');
+  const { t } = useT();
 
-  // Step 1: Preload background image
   useEffect(() => {
     const img = new Image();
     img.onload = () => setPhase('audio');
@@ -24,7 +25,6 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
     img.src = scene.imageUrl;
   }, [scene.imageUrl]);
 
-  // Step 2: Init audio after image is ready
   useEffect(() => {
     if (phase !== 'audio') return;
     let musicReady = !musicUrl;
@@ -61,8 +61,7 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
       setPhase('ready');
     }
 
-    // 兜底：8 秒后强制进入
-    const t = setTimeout(() => {
+    const tOut = setTimeout(() => {
       if (!done) {
         console.warn('[LoadingScreen] Audio load timeout, proceeding anyway');
         done = true;
@@ -70,21 +69,19 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
         setPhase('ready');
       }
     }, 8000);
-    return () => clearTimeout(t);
+    return () => clearTimeout(tOut);
   }, [phase, musicUrl, scene, musicVolume, bgVolume]);
 
-  // Step 3: Brief hold on "ready", then enter
   useEffect(() => {
     if (phase !== 'ready') return;
-    const t = setTimeout(onReady, 700);
-    return () => clearTimeout(t);
+    const tOut = setTimeout(onReady, 700);
+    return () => clearTimeout(tOut);
   }, [phase, onReady]);
 
-  const phaseLabel = { image: '加载背景中...', audio: '正在启动环境音...', ready: '准备就绪' }[phase];
+  const phaseLabel = { image: t('loadingBg'), audio: t('loadingAudio'), ready: t('readyLabel') }[phase];
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black overflow-hidden">
-      {/* Blurred background preview */}
       <div
         className="absolute inset-0 scale-110"
         style={{
@@ -96,7 +93,6 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
       />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.7)_100%)]" />
 
-      {/* Center content */}
       <div className="relative z-10 flex flex-col items-center">
         <div className="text-center mb-10">
           <h2 className="text-2xl font-light text-white/90 tracking-[0.2em] mb-2">
@@ -105,7 +101,6 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
           <p className="text-sm text-white/50 tracking-wide">{scene.description}</p>
         </div>
 
-        {/* Animated indicator */}
         <div className="relative w-20 h-20 mb-8 flex items-center justify-center">
           {phase === 'ready' ? (
             <svg viewBox="0 0 80 80" className="w-full h-full">
@@ -147,12 +142,11 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
             {phaseLabel}
           </span>
           {phase !== 'ready' && (
-            <span className="text-xs text-white/40 tracking-wide">即将进入专注场景</span>
+            <span className="text-xs text-white/40 tracking-wide">{t('enteringScene')}</span>
           )}
         </div>
       </div>
 
-      {/* Scan line decoration */}
       <div
         className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
         style={{ animation: 'scan-line 3s ease-in-out infinite', top: '30%' }}

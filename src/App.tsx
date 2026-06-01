@@ -9,7 +9,7 @@ import { HistoryPage } from './components/HistoryPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from './data';
 import { audioManager } from './audioManager';
-import { recommendScene, detectHoliday, holidayTheme } from './utils';
+import { recommendScene, detectHoliday } from './utils';
 import { checkAchievements, ACHIEVEMENTS, AchievementCtx } from './extras';
 import { LangProvider } from './i18n';
 

@@ -95,18 +95,21 @@ export function TimerPage({
   useEffect(() => { if (scene.audioUrl) { audioManager.setBg(scene.audioUrl); if (isRunning) audioManager.play(); } }, [scene.audioUrl]);
   useEffect(() => { isRunning ? audioManager.play() : audioManager.pause(); }, [isRunning]);
 
-  const getBreakDuration = () => pomodoroCount > 0 && (pomodoroCount + 1) % 4 === 0 ? 15 : 5;
+  const getBreakDuration = () => pomodoroCount > 0 && pomodoroCount % 4 === 0 ? 15 : 5;
 
-  const playDing = useCallback(() => {
+  const playMeditationChime = useCallback(() => {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator(); const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
-      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 2);
+      const now = ctx.currentTime;
+      [523, 659, 784].forEach((freq, i) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + i * 0.15);
+        gain.gain.setValueAtTime(0, now + i * 0.15);
+        gain.gain.linearRampToValueAtTime(0.3, now + i * 0.15 + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 1.5);
+        osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 1.5);
+      });
     } catch { }
   }, []);
 
@@ -130,7 +133,7 @@ export function TimerPage({
     if (pomodoroPhase !== 'meditation') return;
     const iv = setInterval(() => {
       setMeditationTime(prev => {
-        if (prev <= 1) { setIsRunning(true); setPomodoroPhase('study'); sessionStartRef.current = Date.now(); return 0; }
+        if (prev <= 1) { setIsRunning(true); setPomodoroPhase('study'); sessionStartRef.current = Date.now(); playMeditationChime(); return 0; }
         return prev - 1;
       });
     }, 1000);
@@ -196,9 +199,6 @@ export function TimerPage({
   const handleDragOver = (e: React.DragEvent, idx: number) => { e.preventDefault(); if (dragIdx !== null && dragIdx !== idx) { const newTasks = [...tasks]; const [moved] = newTasks.splice(dragIdx, 1); newTasks.splice(idx, 0, moved); onTasksChange(newTasks); setDragIdx(idx); } };
   const handleDragEnd = () => setDragIdx(null);
 
-  const currentTime = timeLeft;
-  const totalTime = isBreak ? getBreakDuration() * 60 : durationMinutes * 60;
-  const progressPercent = ((totalTime - timeLeft) / totalTime) * 100;
   const fmt = (s: number) => { const m = Math.floor(s / 60); const sec = s % 60; return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`; };
   const timePercent = pomodoroPhase === 'meditation' ? (MEDITATION_SECONDS - meditationTime) / MEDITATION_SECONDS * 100 : Math.min(100, ((totalTime - timeLeft) / totalTime) * 100);
 
@@ -215,7 +215,7 @@ export function TimerPage({
     return (
       <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center cursor-pointer" onClick={() => setShowMinimalClock(false)}>
         <SceneClock />
-        <span className="text-[10rem] font-thin text-white tabular-nums mt-8" style={glowStyle}>{fmt(currentTime)}</span>
+        <span className="text-[10rem] font-thin text-white tabular-nums mt-8" style={glowStyle}>{fmt(timeLeft)}</span>
         <span className="text-sm text-white/20 mt-4">{t('backToHome')}</span>
         {/* Countdown gradient overlay */}
         {isEnding && <div className="absolute inset-0 bg-gradient-to-t from-white/5 via-transparent to-transparent pointer-events-none" style={{ opacity: (10 - timeLeft) / 10 }} />}
@@ -307,7 +307,7 @@ export function TimerPage({
               <span className="text-[10px] text-green-400/80 uppercase">{timerMode === 'stopwatch' ? '⏱️' : '⏳'}</span>
             </div>
           </div>
-          <div className="text-6xl font-light tracking-tight mb-4 tabular-nums" style={glowStyle}>{fmt(currentTime)}</div>
+          <div className="text-6xl font-light tracking-tight mb-4 tabular-nums" style={glowStyle}>{timerMode === 'stopwatch' ? fmt(timeElapsed) : fmt(timeLeft)}</div>
           <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2"><div className={`h-full rounded-full transition-all duration-1000 ${isBreak ? 'bg-emerald-500' : timeLeft <= 30 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${timePercent}%` }} /></div>
           <div className="flex justify-center space-x-4 mt-4">
             <button onClick={() => { setIsRunning(false); setTimeLeft(durationMinutes * 60); }} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Reset"><RotateCcw className="w-5 h-5" /></button>
