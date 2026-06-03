@@ -51,11 +51,3 @@ export interface Note {
 }
 
 export interface Achievement { id: string; title: string; desc: string; icon: string; earned: boolean; }
-
-export interface WeekPlanSlot {
-  dayIndex: number;
-  hour: number;
-  minute: number;
-  label: string;
-  enabled: boolean;
-}

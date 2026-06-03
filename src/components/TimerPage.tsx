@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, X, Play, Pause, Maximize, Clock, Waves, GripVertical, RotateCcw, SkipForward, Music } from 'lucide-react';
+import { BookOpen, X, Play, Pause, Maximize, Clock, GripVertical, RotateCcw, SkipForward, Music } from 'lucide-react';
 import { Task, StudySession, Note, TimerMode, PomodoroPhase, TaskCategory } from '../types';
-import { SCENES, MUSIC_TRACKS, NOISE_PRESETS } from '../data';
-import { audioManager, playClickSound, playSuccessSound } from '../audioManager';
+import { SCENES, MUSIC_TRACKS } from '../data';
+import { audioManager, playClickSound, playSuccessSound, playMeditationChime } from '../audioManager';
 import { CinematicBackground } from './CinematicBackground';
 import { SceneClock } from './SceneClock';
 import { AudioVisualizer } from './AudioVisualizer';
@@ -21,15 +21,26 @@ interface TimerPageProps {
   sceneImageUrl: string; onRecordSession: (s: StudySession) => void;
   notes: Note[]; onNotesChange: (v: Note[]) => void;
   holiday: { id: string; label: string; emoji: string } | null;
+  onSceneChange: (sceneId: string) => void;
 }
 
 const MEDITATION_SECONDS = 30;
+
+const SCENE_EMOJI: Record<string, string> = {
+  morning_window: '🌅',
+  rainy_cafe: '🌧️',
+  night_library: '📚',
+  seaside_study: '🌊',
+  deep_night_desk: '💻',
+  forest_cabin: '🌲',
+  city_skyline: '🌆',
+};
 
 export function TimerPage({
   sceneId, musicId, onSelectMusic, musicUrl, durationMinutes,
   musicVolume, onMusicVolumeChange, bgVolume, onBgVolumeChange, onExit,
   tasks, onTasksChange, pomodoroCount, onPomodoroComplete,
-  customMusicUrl, onCustomMusicChange, sceneImageUrl, onRecordSession, notes, onNotesChange, holiday,
+  customMusicUrl, onCustomMusicChange, sceneImageUrl, onRecordSession, notes, onNotesChange, holiday, onSceneChange,
 }: TimerPageProps) {
   const { t } = useT();
   const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
@@ -91,27 +102,16 @@ export function TimerPage({
 
   useEffect(() => { audioManager.setMusicVolume(musicVolume / 100); }, [musicVolume]);
   useEffect(() => { audioManager.setBgVolume(bgVolume / 100); }, [bgVolume]);
-  useEffect(() => { if (musicUrl) { audioManager.setMusic(musicUrl); if (isRunning) audioManager.play(); } }, [musicUrl]);
-  useEffect(() => { if (scene.audioUrl) { audioManager.setBg(scene.audioUrl); if (isRunning) audioManager.play(); } }, [scene.audioUrl]);
+  useEffect(() => { if (musicUrl) { audioManager.setMusic(musicUrl); } }, [musicUrl]);
+  useEffect(() => { 
+    if (scene.audioUrl) { 
+      audioManager.setBg(scene.audioUrl);
+      if (isRunning) audioManager.playBg();
+    }
+  }, [scene.audioUrl]);
   useEffect(() => { isRunning ? audioManager.play() : audioManager.pause(); }, [isRunning]);
 
   const getBreakDuration = () => pomodoroCount > 0 && pomodoroCount % 4 === 0 ? 15 : 5;
-
-  const playMeditationChime = useCallback(() => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const now = ctx.currentTime;
-      [523, 659, 784].forEach((freq, i) => {
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + i * 0.15);
-        gain.gain.setValueAtTime(0, now + i * 0.15);
-        gain.gain.linearRampToValueAtTime(0.3, now + i * 0.15 + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 1.5);
-        osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 1.5);
-      });
-    } catch { }
-  }, []);
 
   const recordAndFinish = useCallback(() => {
     const dur = ((Date.now() - sessionStartRef.current) / 1000);
@@ -174,7 +174,7 @@ export function TimerPage({
     try {
       if (enter && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
       else if (!enter && document.fullscreenElement) await document.exitFullscreen();
-    } catch { }
+    } catch (e) { console.error('Fullscreen API failed:', e); }
   };
 
   // Keyboard
@@ -263,16 +263,85 @@ export function TimerPage({
 
       {/* Meditation guide */}
       {pomodoroPhase === 'meditation' && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60">
-          <span className="text-[8rem] font-thin text-white/90 tabular-nums" style={{ textShadow: '0 0 60px rgba(255,255,255,0.2)' }}>{meditationTime}</span>
-          <div className="mt-8 w-40 h-40 rounded-full border-2 border-white/25 flex items-center justify-center relative">
-            <div className={`absolute inset-2 rounded-full transition-all duration-[600ms] ${breatheLabel === 'in' ? 'scale-125 border-white/40' : 'scale-100 border-white/10'}`} />
-            <span className={`text-xl transition-all duration-[600ms] ${breatheLabel === 'in' ? 'scale-110' : 'scale-100'}`}
-              style={{ fontFamily: '"STKaiti", "KaiTi", serif' }}>
-              {breatheLabel === 'in' ? t('breatheIn') : breatheLabel === 'hold' ? t('hold') : t('breatheOut')}
-            </span>
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
+          {/* Breathing glow background */}
+          <div
+            className="absolute inset-0 transition-opacity duration-1000"
+            style={{
+              background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,${0.03 + Math.sin(meditationTime * 0.5) * 0.02}) 0%, transparent 70%)`,
+            }}
+          />
+
+          {/* Large breathing ring */}
+          <div className="relative flex items-center justify-center mb-10">
+            {/* Outer glow ring */}
+            <div
+              className={`absolute rounded-full border border-white/10 transition-all duration-[1000ms] ease-in-out ${
+                breatheLabel === 'in' ? 'w-80 h-80 opacity-30' :
+                breatheLabel === 'hold' ? 'w-88 h-88 opacity-25' :
+                'w-80 h-80 opacity-15'
+              }`}
+              style={{
+                boxShadow: breatheLabel === 'in'
+                  ? '0 0 120px rgba(255,255,255,0.08), inset 0 0 120px rgba(255,255,255,0.03)'
+                  : breatheLabel === 'hold'
+                  ? '0 0 160px rgba(255,255,255,0.12), inset 0 0 160px rgba(255,255,255,0.05)'
+                  : '0 0 80px rgba(255,255,255,0.04), inset 0 0 80px rgba(255,255,255,0.01)',
+              }}
+            />
+            {/* Middle ring */}
+            <div
+              className={`absolute rounded-full border transition-all duration-[600ms] ${
+                breatheLabel === 'in' ? 'w-60 h-60 border-white/15 scale-125' :
+                breatheLabel === 'hold' ? 'w-64 h-64 border-white/20 scale-130' :
+                'w-60 h-60 border-white/8 scale-100'
+              }`}
+            />
+            {/* Inner circle with text */}
+            <div
+              className={`relative w-40 h-40 rounded-full border-2 flex items-center justify-center transition-all duration-[600ms] ${
+                breatheLabel === 'in' ? 'border-white/30 bg-white/5 shadow-[0_0_60px_rgba(255,255,255,0.1)]' :
+                breatheLabel === 'hold' ? 'border-white/40 bg-white/8 shadow-[0_0_80px_rgba(255,255,255,0.15)]' :
+                breatheLabel === 'out' ? 'border-white/20 bg-white/3 shadow-[0_0_30px_rgba(255,255,255,0.05)]' :
+                'border-white/25 bg-white/3'
+              }`}
+            >
+              <span
+                className={`text-2xl font-light transition-all duration-[600ms] tracking-widest ${
+                  breatheLabel === 'in' ? 'scale-110 text-white/90' :
+                  breatheLabel === 'out' ? 'scale-95 text-white/50' :
+                  'scale-105 text-white/70'
+                }`}
+                style={{ fontFamily: '"STKaiti", "KaiTi", "Microsoft YaHei", serif' }}
+              >
+                {breatheLabel === 'in' ? t('breatheIn') : breatheLabel === 'hold' ? t('hold') : t('breatheOut')}
+              </span>
+            </div>
           </div>
-          <button onClick={() => { setPomodoroPhase('study'); setIsRunning(true); setMeditationTime(0); sessionStartRef.current = Date.now(); }} className="mt-10 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-colors text-sm">{t('startFocus')}</button>
+
+          {/* Countdown number */}
+          <span
+            className="text-[5rem] font-thin text-white/80 tabular-nums mb-8"
+            style={{ textShadow: '0 0 80px rgba(255,255,255,0.15)' }}
+          >
+            {meditationTime}
+          </span>
+
+          {/* Action buttons */}
+          <div className="flex flex-col items-center space-y-3">
+            <button
+              onClick={() => { setPomodoroPhase('study'); setIsRunning(true); setMeditationTime(0); sessionStartRef.current = Date.now(); }}
+              className="px-8 py-3 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 transition-all text-sm tracking-wide"
+            >
+              {t('startFocus')}
+            </button>
+            <button
+              onClick={() => { setPomodoroPhase('study'); setIsRunning(true); setMeditationTime(0); sessionStartRef.current = Date.now(); }}
+              className="text-xs text-white/30 hover:text-white/50 transition-colors"
+            >
+              {t('startStudying')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -287,7 +356,7 @@ export function TimerPage({
               <span className="text-sm text-white/40 hidden md:inline">{scene.title}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <button onClick={() => setShowNoiseMixer(prev => !prev)} className={`p-2 rounded-full border transition-colors text-sm ${showNoiseMixer ? 'bg-white/15 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'}`} title="Noise mixer"><Music className="w-4 h-4" /></button>
+              <button onClick={() => setShowNoiseMixer(prev => !prev)} className={`p-2 rounded-full border transition-colors text-sm ${showNoiseMixer ? 'bg-white/15 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'}`} title={t('bgAudio')}><Music className="w-4 h-4" /></button>
               <button onClick={() => toggleImmersive(true)} className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition-colors text-sm">
                 <Maximize className="w-4 h-4" /><span>{t('immersive')}</span>
               </button>
@@ -311,11 +380,11 @@ export function TimerPage({
           <div className="text-6xl font-light tracking-tight mb-4 tabular-nums" style={glowStyle}>{timerMode === 'stopwatch' ? fmt(timeElapsed) : fmt(timeLeft)}</div>
           <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2"><div className={`h-full rounded-full transition-all duration-1000 ${isBreak ? 'bg-emerald-500' : timeLeft <= 30 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${timePercent}%` }} /></div>
           <div className="flex justify-center space-x-4 mt-4">
-            <button onClick={() => { setIsRunning(false); setTimeLeft(durationMinutes * 60); }} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Reset"><RotateCcw className="w-5 h-5" /></button>
+            <button onClick={() => { setIsRunning(false); setTimeLeft(durationMinutes * 60); }} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Reset" aria-label={t('reset')}><RotateCcw className="w-5 h-5" /></button>
             <button onClick={() => { setIsRunning(!isRunning); playClickSound(); }} className="p-3 rounded-full bg-white hover:bg-white/90 transition-colors">
               {isRunning ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
             </button>
-            {isBreak && <button onClick={handleBreakFinish} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Skip break"><SkipForward className="w-5 h-5" /></button>}
+            {isBreak && <button onClick={handleBreakFinish} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Skip break" aria-label={t('skipBreak')}><SkipForward className="w-5 h-5" /></button>}
           </div>
         </motion.div>
 
@@ -350,22 +419,64 @@ export function TimerPage({
           </div>
         )}
 
-        {/* Noise Mixer */}
+        {/* Scene switcher */}
+        {!isImmersive && (
+          <div className="pointer-events-auto absolute left-8 bottom-6 md:left-24 md:bottom-10 p-2.5 rounded-2xl bg-white/[0.02] backdrop-blur-sm border border-white/10">
+            <div className="flex items-center space-x-1.5">
+              {SCENES.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => { onSceneChange(s.id); playClickSound(); }}
+                  className={`flex flex-col items-center p-1.5 rounded-xl transition-all min-w-[48px] ${sceneId === s.id ? 'bg-white/15 border border-white/30' : 'bg-white/[0.02] border border-white/5 hover:bg-white/10 hover:border-white/20'}`}
+                  title={s.title}
+                >
+                  <span className="text-base leading-none">{SCENE_EMOJI[s.id] || '🎬'}</span>
+                  <span className={`text-[8px] mt-0.5 leading-tight ${sceneId === s.id ? 'text-white/70' : 'text-white/25'}`}>{s.title.slice(0, 4)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Audio Panel: Music + Volume controls */}
         <AnimatePresence>
           {showNoiseMixer && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-              className="pointer-events-auto absolute right-8 top-32 md:right-24 md:top-40 w-64 p-4 rounded-2xl bg-white/[0.02] backdrop-blur-md border border-white/10">
-              <div className="flex items-center justify-between mb-3"><Waves className="w-4 h-4 text-white/60" /><span className="text-xs font-medium text-white/60">{t('bgAudio')}</span><button onClick={() => setShowNoiseMixer(false)} className="text-white/30 hover:text-white/60"><X className="w-3 h-3" /></button></div>
-              {NOISE_PRESETS.map(n => (
-                <div key={n.id} className="flex items-center space-x-2 py-1.5">
-                  <span className="text-xs w-3">{n.icon}</span>
-                  <span className="text-[11px] text-white/60 flex-1">{n.label}</span>
-                  <button onClick={() => { const nv = noiseVolumes[n.id] ?? 0.3; if (nv > 0) { audioManager.stopNoise(n.id); setNoiseVolumes(prev => ({ ...prev, [n.id]: 0 })); } else { audioManager.startNoise(n.id); setNoiseVolumes(prev => ({ ...prev, [n.id]: 0.3 })); } }}
-                    className={`w-8 h-5 rounded-full relative transition-colors ${(noiseVolumes[n.id] ?? 0) > 0 ? 'bg-white/30' : 'bg-white/10'}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${(noiseVolumes[n.id] ?? 0) > 0 ? 'right-0.5' : 'left-0.5'}`} />
-                  </button>
+              className="pointer-events-auto absolute right-8 top-32 md:right-24 md:top-40 w-64 p-4 rounded-2xl bg-white/[0.04] backdrop-blur-md border border-white/15">
+              <div className="flex items-center justify-between mb-3"><Music className="w-4 h-4 text-white/60" /><span className="text-xs font-medium text-white/60">{t('bgAudio')}</span><button onClick={() => setShowNoiseMixer(false)} className="text-white/30 hover:text-white/60"><X className="w-3 h-3" /></button></div>
+
+              {/* Music selection */}
+              <div className="mb-4">
+                <div className="text-[10px] text-white/40 mb-2 uppercase tracking-wide">{t('musicSelect')}</div>
+                <div className="max-h-32 overflow-y-auto space-y-0.5">
+                  {MUSIC_TRACKS.slice(0, -2).map(m => (
+                    <button key={m.id} onClick={() => onSelectMusic(m.id)}
+                      className={`w-full text-left text-[11px] px-2 py-1 rounded transition-colors ${musicId === m.id ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white/70 hover:bg-white/[0.03]'}`}>
+                      {m.title}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Music volume */}
+              <div className="mb-3">
+                <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                  <span>🎵 {t('musicVol')}</span>
+                  <span className="tabular-nums">{musicVolume}%</span>
+                </div>
+                <input type="range" min={0} max={100} value={musicVolume} onChange={e => onMusicVolumeChange(Number(e.target.value))}
+                  className="w-full h-1 accent-white/60 bg-white/10 rounded-full appearance-none cursor-pointer" />
+              </div>
+
+              {/* Background volume */}
+              <div className="mb-1">
+                <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                  <span>🌿 {t('bgSound')}</span>
+                  <span className="tabular-nums">{bgVolume}%</span>
+                </div>
+                <input type="range" min={0} max={100} value={bgVolume} onChange={e => onBgVolumeChange(Number(e.target.value))}
+                  className="w-full h-1 accent-white/60 bg-white/10 rounded-full appearance-none cursor-pointer" />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

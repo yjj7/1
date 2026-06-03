@@ -2,7 +2,7 @@ import { PomodoroPhase, Task, StudySession, TimerMode } from './types';
 import { SCENES } from './data';
 
 // ============ 成就系统 ============
-export interface Achievement {
+export interface AchievementDef {
   id: string;
   title: string;
   desc: string;
@@ -18,7 +18,7 @@ export interface AchievementCtx {
   sessionCount: number;
 }
 
-export const ACHIEVEMENTS: Achievement[] = [
+export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'first_pomodoro', title: '初次专注', desc: '完成第一个番茄钟', icon: '🍅', check: (c) => c.pomodoroCount >= 1 },
   { id: 'ten_pomodoros', title: '专注学徒', desc: '完成 10 个番茄钟', icon: '⭐', check: (c) => c.pomodoroCount >= 10 },
   { id: 'fifty_pomodoros', title: '专注达人', desc: '完成 50 个番茄钟', icon: '🌟', check: (c) => c.pomodoroCount >= 50 },
@@ -35,7 +35,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'night_owl', title: '夜猫子', desc: '凌晨 12 点后还在学习', icon: '🦉', check: (c) => c.sessions.some(s => new Date(s.date).getHours() >= 0 && new Date(s.date).getHours() < 2) },
 ];
 
-export function checkAchievements(ctx: AchievementCtx): Achievement[] {
+export function checkAchievements(ctx: AchievementCtx): AchievementDef[] {
   return ACHIEVEMENTS.filter(a => a.check(ctx));
 }
 

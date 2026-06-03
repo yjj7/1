@@ -1,4 +1,4 @@
-﻿import React, { useRef } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import { BookOpen, Headphones, Volume2, ArrowRight, Upload, Music, Image, BarChart3, Clock, Target, Flame, Save, Star, Zap, Trash2 } from 'lucide-react';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from '../data';
 import { DailyGoal } from '../types';
@@ -50,7 +50,8 @@ export function SetupPage(props: SetupPageProps) {
   const bgImage = selectedSceneId === 'custom' && customBgUrl ? customBgUrl : activeScene.imageUrl;
   const musicFileRef = useRef<HTMLInputElement>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
-  const [presetLabel, setPresetLabel] = React.useState('');
+  const customTimeRef = useRef<HTMLInputElement>(null);
+  const [presetLabel, setPresetLabel] = useState('');
 
   const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -97,7 +98,7 @@ export function SetupPage(props: SetupPageProps) {
                 </button>
               )}
             </div>
-            <h2 className="text-2xl font-medium mt-1">选择学习场景</h2>
+            <h2 className="text-2xl font-medium mt-1">{t('stepScene')}</h2>
           </div>
           <div className="flex-1 p-4 md:p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -122,7 +123,7 @@ export function SetupPage(props: SetupPageProps) {
               })}
               <div className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ${selectedSceneId === 'custom' ? 'border-white/50 bg-white/10 ring-2 ring-white/20' : 'border-white/10 bg-black/20 hover:bg-white/5'}`}>
                 <input ref={bgFileRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden" />
-                <button onClick={() => bgFileRef.current?.click()} className="flex-1 flex flex-col items-center justify-center p-6 aspect-[16/10]">
+                <button onClick={() => bgFileRef.current?.click()} aria-label={t('uploadBg')} className="flex-1 flex flex-col items-center justify-center p-6 aspect-[16/10]">
                   <Image className="w-8 h-8 text-white/40 mb-2" />
                   <span className="text-xs text-white/50">{customBgUrl ? t('customBgReady') : t('uploadBg')}</span>
                 </button>
@@ -167,11 +168,12 @@ export function SetupPage(props: SetupPageProps) {
           {/* Audio */}
           <div>
             <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 02</span>
-            <h2 className="text-xl font-medium mt-1 mb-3">声音氛围</h2>
+            <h2 className="text-xl font-medium mt-1 mb-3">{t('stepSound')}</h2>
             <div className="space-y-3">
               <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
                 <div className="flex items-center space-x-2 mb-3"><Headphones className="w-4 h-4 text-white/60" /><span className="text-sm font-medium">{t("music")}</span></div>
-                <select value={selectedMusicId} onChange={(e) => onSelectMusic(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 outline-none cursor-pointer">
+                <label htmlFor="music-select" className="sr-only">{t('musicSelect')}</label>
+                <select id="music-select" value={selectedMusicId} onChange={(e) => onSelectMusic(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 outline-none cursor-pointer">
                   {MUSIC_TRACKS.map(m => <option key={m.id} value={m.id} className="text-black">{m.title}</option>)}
                 </select>
                 {selectedMusicId === 'custom' && (
@@ -214,19 +216,19 @@ export function SetupPage(props: SetupPageProps) {
           {/* Timer */}
           <div className="flex-1 flex flex-col">
             <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 04</span>
-            <h2 className="text-xl font-medium mt-1 mb-3">番茄钟</h2>
+            <h2 className="text-xl font-medium mt-1 mb-3">{t('stepTimer')}</h2>
             <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10 flex-1 flex flex-col">
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {DURATIONS.map(dur => (
-                  <button key={dur} onClick={() => { onTimerDurationChange(dur); (document.getElementById('custom-time') as HTMLInputElement) && ((document.getElementById('custom-time') as HTMLInputElement).value = ''); }} className={`py-3 rounded-lg border text-sm transition-all ${timerDuration === dur ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>`{dur} {t("minutes")}</button>
+                  <button key={dur} onClick={() => { onTimerDurationChange(dur); if (customTimeRef.current) customTimeRef.current.value = ''; }} className={`py-3 rounded-lg border text-sm transition-all ${timerDuration === dur ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>`{dur} {t("minutes")}</button>
                 ))}
-                <div className={`relative flex items-center rounded-lg border overflow-hidden ${![...DURATIONS].includes(timerDuration) ? 'bg-white/15 border-white' : 'border-white/15'}`}>
-                  <input id="custom-time" type="number" placeholder={t("custom")} className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30" onChange={(e) => { const v = Number(e.target.value); if (v > 0) onTimerDurationChange(v); }} />
+                <div className={`relative flex items-center rounded-lg border overflow-hidden ${!DURATIONS.includes(timerDuration) ? 'bg-white/15 border-white' : 'border-white/15'}`}>
+                  <input ref={customTimeRef} id="custom-time" type="number" placeholder={t("custom")} className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30" onChange={(e) => { const v = Number(e.target.value); if (v > 0) onTimerDurationChange(v); }} />
                   <span className="absolute right-3 text-xs text-white/40 pointer-events-none">min</span>
                 </div>
               </div>
               <div className="mt-auto">
-                <button onClick={onEnter} className="w-full py-3.5 rounded-full bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 group"><span>进入自习室</span><ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></button>
+                <button onClick={onEnter} className="w-full py-3.5 rounded-full bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 group"><span>{t('enterRoom')}</span><ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></button>
               </div>
             </div>
           </div>

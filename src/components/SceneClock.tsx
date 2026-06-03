@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useT } from '../i18n';
 
 /** 极简实时时钟 — 毛玻璃风格，融入沉浸场景 */
 export function SceneClock() {
   const [now, setNow] = useState(new Date());
+  const { t } = useT();
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -14,7 +16,7 @@ export function SceneClock() {
   const seconds = now.getSeconds().toString().padStart(2, '0');
 
   const hour = now.getHours();
-  const greeting = hour < 6 ? '夜深了' : hour < 9 ? '早安' : hour < 12 ? '上午好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : hour < 22 ? '晚上好' : '夜深了';
+  const greeting = hour < 6 ? t('greetingLateNight') : hour < 9 ? t('greetingMorning') : hour < 12 ? t('greetingLateMorning') : hour < 14 ? t('greetingNoon') : hour < 18 ? t('greetingAfternoon') : hour < 22 ? t('greetingEvening') : t('greetingLateNight');
 
   return (
     <div className="absolute bottom-6 right-6 z-30 pointer-events-none select-none">

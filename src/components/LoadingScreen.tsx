@@ -19,10 +19,12 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
   const { t } = useT();
 
   useEffect(() => {
+    let cancelled = false;
     const img = new Image();
-    img.onload = () => setPhase('audio');
-    img.onerror = () => setPhase('audio');
+    img.onload = () => { if (!cancelled) setPhase('audio'); };
+    img.onerror = () => { if (!cancelled) setPhase('audio'); };
     img.src = scene.imageUrl;
+    return () => { cancelled = true; };
   }, [scene.imageUrl]);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
       if (done) return;
       if (musicReady && bgReady) {
         done = true;
-        try { audioManager.play(); } catch (e) { console.warn('play error', e); }
+        try { audioManager.play(); } catch (e) { /* audio not ready */ }
         setPhase('ready');
       }
     };
@@ -57,13 +59,11 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
       audioManager.setBgVolume(bgVolume / 100);
       checkReady();
     } catch (e) {
-      console.warn('Audio init failed', e);
       setPhase('ready');
     }
 
     const tOut = setTimeout(() => {
       if (!done) {
-        console.warn('[LoadingScreen] Audio load timeout, proceeding anyway');
         done = true;
         try { audioManager.play(); } catch (e) {}
         setPhase('ready');
@@ -129,7 +129,7 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
                   style={{
                     width: `${20 + i * 28}px`,
                     height: `${20 + i * 28}px`,
-                    animation: `pluse-ring 2s ease-out ${i * 0.4}s infinite`,
+                    animation: `pulse-ring 2s ease-out ${i * 0.4}s infinite`,
                   }}
                 />
               ))}
@@ -151,20 +151,6 @@ export function LoadingScreen({ sceneId, musicId, musicUrl, musicVolume, bgVolum
         className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
         style={{ animation: 'scan-line 3s ease-in-out infinite', top: '30%' }}
       />
-
-      <style>{`
-        @keyframes pluse-ring {
-          0% { transform: scale(0.8); opacity: 0.6; }
-          50% { transform: scale(1); opacity: 0.15; }
-          100% { transform: scale(0.8); opacity: 0.6; }
-        }
-        @keyframes scan-line {
-          0% { top: 30%; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { top: 70%; opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }

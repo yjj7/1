@@ -82,7 +82,7 @@ export function HistoryPage({ studyHistory, onBack, onClearHistory }: HistoryPag
                         <div key={s.id} className="flex items-center justify-between px-5 py-3">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
-                              {scene && <img src={scene.imageUrl} alt="" className="w-full h-full object-cover" />}
+                              {scene && <img src={scene.imageUrl} alt="" role="presentation" className="w-full h-full object-cover" />}
                             </div>
                             <div>
                               <span className="text-sm">{scene?.title || t('unknownScene')}</span>

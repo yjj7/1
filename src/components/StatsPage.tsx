@@ -26,26 +26,31 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
     const weekMinutes = thisWeek.reduce((s, h) => s + h.duration, 0) / 60;
     const timeSlots = analyzeTimeSlots(studyHistory);
 
-    // Heatmap
+    // Heatmap (pre-index by date for O(n) instead of O(n²))
+    const byDate = new Map<string, number>();
+    studyHistory.forEach(s => {
+      const ds = s.date.slice(0, 10);
+      byDate.set(ds, (byDate.get(ds) || 0) + s.duration);
+    });
     const heatmap: { date: string; minutes: number }[] = [];
     for (let i = 83; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400000);
       const ds = d.toISOString().slice(0, 10);
-      heatmap.push({ date: ds, minutes: studyHistory.filter(s => s.date.slice(0, 10) === ds).reduce((sm, h) => sm + h.duration, 0) / 60 });
+      heatmap.push({ date: ds, minutes: (byDate.get(ds) || 0) / 60 });
     }
 
-    // Daily breakdown
+    // Daily breakdown (reuse byDate index)
     const daily: { label: string; minutes: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400000);
       const ds = d.toISOString().slice(0, 10);
-      daily.push({ label: ['日', '一', '二', '三', '四', '五', '六'][d.getDay()], minutes: studyHistory.filter(s => s.date.slice(0, 10) === ds).reduce((sm, h) => sm + h.duration, 0) / 60 });
+      daily.push({ label: ['日', '一', '二', '三', '四', '五', '六'][d.getDay()], minutes: (byDate.get(ds) || 0) / 60 });
     }
 
     return { totalMinutes, totalTasks, weekMinutes, timeSlots, heatmap, daily, maxDaily: Math.max(1, ...daily.map(d => d.minutes)) };
   }, [studyHistory]);
 
-  const todayMinutes = studyHistory.filter(s => s.date.slice(0, 10) === new Date().toISOString().slice(0, 10)).reduce((sm, h) => sm + h.duration, 0) / 60;
+  const todayMinutes = stats.daily[6]?.minutes || 0;
   const goalProgress = Math.min(100, (todayMinutes / dailyGoal.targetMinutes) * 100);
   const hc = (m: number) => m === 0 ? 'bg-white/5' : m < 15 ? 'bg-green-900/60' : m < 30 ? 'bg-green-700/70' : m < 60 ? 'bg-green-500/80' : 'bg-green-400';
 
@@ -64,7 +69,7 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
       const rows: [string, string, string][] = [
         [t('totalTime'), `${Math.floor(stats.totalMinutes / 60)}h ${Math.round(stats.totalMinutes % 60)}m`, '#60a5fa'],
         [t('pomodoros'), `${pomodoroCount}`, '#4ade80'], [t('streakDays'), `${streak} 天`, '#fb923c'],
-        ['{t("weekStudy")}', `${Math.round(stats.weekMinutes)} 分钟`, '#a78bfa'], [t('todayGoal'), `${Math.round(goalProgress)}%`, '#f472b6'],
+        [t('weekStudy'), `${Math.round(stats.weekMinutes)} 分钟`, '#a78bfa'], [t('todayGoal'), `${Math.round(goalProgress)}%`, '#f472b6'],
       ];
       rows.forEach(([l, v, c], i) => {
         const y = 190 + i * 60;
@@ -76,7 +81,7 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
       link.download = `studywithme-report-${new Date().toISOString().slice(0, 10)}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-    } catch { alert('导出失败，请稍后再试'); }
+    } catch { alert(t('exportFailed')); }
   };
 
   return (
@@ -142,7 +147,7 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
           <h3 className="text-lg font-medium mb-4 flex items-center space-x-2"><Calendar className="w-5 h-5 text-blue-400" /><span>{t("weekStudy")}</span></h3>
           <div className="flex items-end justify-between h-32 space-x-2">
             {stats.daily.map((day, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center"><span className="text-[10px] text-white/40 mb-1">{Math.round(day.minutes)}m</span><div className="w-full bg-white/5 rounded-t-lg relative" style={{ height: '100%' }}><div className="absolute bottom-0 w-full bg-gradient-to-t from-blue-500 to-cyan-400 rounded-t-lg transition-all duration-500" style={{ height: `${(day.minutes / stats.maxDaily) * 100}%` }} /></div><span className="text-xs text-white/60 mt-2">{day.label}</span></div>
+              <div key={day.label || `day-${i}`} className="flex-1 flex flex-col items-center"><span className="text-[10px] text-white/40 mb-1">{Math.round(day.minutes)}m</span><div className="w-full bg-white/5 rounded-t-lg relative" style={{ height: '100%' }}><div className="absolute bottom-0 w-full bg-gradient-to-t from-blue-500 to-cyan-400 rounded-t-lg transition-all duration-500" style={{ height: `${(day.minutes / stats.maxDaily) * 100}%` }} /></div><span className="text-xs text-white/60 mt-2">{day.label}</span></div>
             ))}
           </div>
         </div>
@@ -150,7 +155,7 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
         {/* Heatmap */}
         <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
           <h3 className="text-lg font-medium mb-4 flex items-center space-x-2"><Award className="w-5 h-5 text-yellow-400" /><span>{t("heatmap")}</span></h3>
-          <div className="flex flex-wrap gap-1">{stats.heatmap.map((day, i) => <div key={i} title={`${day.date}: ${Math.round(day.minutes)} {t("mins")}`} className={`w-3 h-3 rounded-sm ${hc(day.minutes)} transition-colors`} />)}</div>
+          <div className="flex flex-wrap gap-1">{stats.heatmap.map((day, i) => <div key={day.date} title={`${day.date}: ${Math.round(day.minutes)} ${t('mins')}`} className={`w-3 h-3 rounded-sm ${hc(day.minutes)} transition-colors`} />)}</div>
           <div className="flex items-center justify-end space-x-1 mt-3 text-[10px] text-white/40"><span>少</span>{['bg-white/5', 'bg-green-900/60', 'bg-green-700/70', 'bg-green-500/80', 'bg-green-400'].map((c, i) => <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />)}<span>多</span></div>
         </div>
       </main>

@@ -1,12 +1,12 @@
 {
   "name": "StudyWithMe AI - 沉浸式学习自习室",
   "short_name": "StudyWithMe",
-  "description": "沉浸式学习计时器，结合美学场景、专注音乐与智能番茄钟",
+  "description": "番茄钟 + 白噪音 + 多场景沉浸式学习",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#667eea",
-  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/favicon.svg",

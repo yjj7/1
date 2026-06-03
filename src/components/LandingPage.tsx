@@ -1,6 +1,6 @@
-import React from 'react';
-import { BookOpen, ArrowRight, BarChart3, Clock, Flame, Target, Trophy, Globe } from 'lucide-react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { BookOpen, ArrowRight, BarChart3, Clock, Flame, Target, Trophy, Globe, HelpCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import landingBg from '../assets/images/premium_landing_bg_1780054955872.png';
 import { CinematicBackground } from './CinematicBackground';
 import { getDailyQuote } from '../extras';
@@ -15,12 +15,14 @@ interface Props {
   pomodoroCount: number;
   holiday: { id: string; label: string; emoji: string } | null;
   achievements: Achievement[];
+  onOpenGuide: () => void;
 }
 
-export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount, holiday, achievements }: Props) {
+export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount, holiday, achievements, onOpenGuide }: Props) {
   const { t, lang, setLang } = useT();
   const quote = getDailyQuote();
   const earnedCount = achievements.filter(a => a.earned).length;
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   return (
     <div className="relative min-h-screen w-full flex flex-col text-white overflow-hidden font-sans">
@@ -33,6 +35,7 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
         <div className="flex items-center space-x-3"><BookOpen className="w-6 h-6" /><span className="text-xl font-medium tracking-wide">StudyWithMe AI</span></div>
         <nav className="flex items-center space-x-6 text-sm text-white/70">
           <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="hover:text-white transition-colors flex items-center space-x-1.5"><Globe className="w-4 h-4" /><span>{lang === 'zh' ? 'EN' : '中'}</span></button>
+          <button onClick={onOpenGuide} className="hover:text-white transition-colors" title={t('helpGuide')}><HelpCircle className="w-4 h-4" /></button>
           <button onClick={onStats} className="hover:text-white transition-colors flex items-center space-x-1.5"><BarChart3 className="w-4 h-4" /><span>{t('stats')}</span></button>
           <button onClick={onHistory} className="hover:text-white transition-colors flex items-center space-x-1.5"><Clock className="w-4 h-4" /><span>{t('history')}</span></button>
           {earnedCount > 0 && <div className="flex items-center space-x-1.5 text-amber-300"><Trophy className="w-4 h-4" /><span>{earnedCount}/{achievements.length}</span></div>}
@@ -76,16 +79,44 @@ export function LandingPage({ onStart, onStats, onHistory, streak, pomodoroCount
         </motion.div>
       </main>
 
-      <footer className="relative z-10 py-8 px-8 md:px-24 border-t border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-t from-black/60 to-transparent">
-        <div className="mb-6 md:mb-0">
-          <div className="flex items-center space-x-3 mb-3"><BookOpen className="w-5 h-5 text-white/80" /><span className="text-lg text-white/80 font-medium">StudyWithMe AI</span></div>
-          <p className="text-sm text-white/50 max-w-md">{t('footerDesc')}</p>
-        </div>
-        <div className="flex gap-16 text-sm">
-          <div className="flex flex-col space-y-3 text-white/60"><span className="text-white font-medium mb-1">{t('productLabel')}</span><button onClick={onStart} className="text-left hover:text-white transition-colors">{t('sceneLabel')}</button><button onClick={onStart} className="text-left hover:text-white transition-colors">{t('musicLabel')}</button></div>
-          <div className="flex flex-col space-y-3 text-white/60"><span className="text-white font-medium mb-1">{t('dataLabel')}</span><button onClick={onStats} className="text-left hover:text-white transition-colors">{t('studyStatsLabel')}</button><button onClick={onHistory} className="text-left hover:text-white transition-colors">{t('studyHistoryLabel')}</button></div>
+      <footer className="relative z-10 py-6 px-8 md:px-24 border-t border-white/10 bg-gradient-to-t from-black/60 to-transparent">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-white/40">
+          <span>{t('copyright')}</span>
+          <div className="flex items-center space-x-6">
+            <a href="mailto:feedback@nuomiyu.qzz.io" className="hover:text-white/70 transition-colors">{t('feedback')}</a>
+            <button onClick={() => setShowPrivacy(true)} className="hover:text-white/70 transition-colors">{t('privacy')}</button>
+          </div>
         </div>
       </footer>
+
+      <AnimatePresence>
+        {showPrivacy && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowPrivacy(false)}
+          >
+            <motion.div
+              className="max-w-md w-full mx-4 p-8 rounded-3xl bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-xl font-bold mb-4">{t('privacyTitle')}</h2>
+              <p className="text-white/70 leading-relaxed mb-6">{t('privacyText')}</p>
+              <button
+                onClick={() => setShowPrivacy(false)}
+                className="px-6 py-2.5 rounded-full bg-white/[0.1] border border-white/10 hover:bg-white/20 transition-all text-sm"
+              >
+                {t('privacyClose')}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
