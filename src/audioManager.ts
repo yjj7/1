@@ -174,9 +174,33 @@ class AudioManager {
     }
 
     const ctx = getCtx();
+
+    // === Reverb ===
+    const reverbGain = ctx.createGain();
+    reverbGain.gain.value = 0.35;
+    const delays: DelayNode[] = [];
+    const dTimes = [0.043, 0.057, 0.073, 0.091, 0.107];
+    dTimes.forEach((dt, i) => {
+      const d = ctx.createDelay(0.2);
+      d.delayTime.value = dt;
+      const g = ctx.createGain();
+      g.gain.value = 0.18 / (i + 1);
+      d.connect(g);
+      g.connect(d); // feedback loop
+      g.connect(reverbGain);
+      delays.push(d);
+    });
+    reverbGain.connect(ctx.destination);
+
+    // Dry mix
+    const dryGain = ctx.createGain();
+    dryGain.gain.value = 0.7;
+    dryGain.connect(ctx.destination);
+
     musicGain = ctx.createGain();
-    musicGain.gain.value = this.musicVol;
-    musicGain.connect(ctx.destination);
+    musicGain.gain.value = this.musicVol * 0.6;
+    musicGain.connect(dryGain);
+    delays.forEach(d => musicGain!.connect(d));
     musicRunning = true;
 
     const musicType = this.musicSrc.includes('lofi') ? 'lofi'
@@ -193,63 +217,177 @@ class AudioManager {
 
     if (musicType === 'none') { musicRunning = false; return; }
 
+    // Scales: C major, pentatonic, and minor variations
+    const cMajor = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+    // Pentatonic: C D E G A C D E
     const pentatonic = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
-    const sequences: Record<string, number[][]> = {
-      gymnopedie: [[0,2,4,1,3,5,4,2],[1.5,1,1.5,1,1,1.5,1,1.5]],
-      clair: [[0,3,5,3,0,4,2,0],[2,1,1.5,1,1,1.5,1,2]],
-      lofi: [[0,1,3,2,4,3,5,4],[1,1,1,1,1,1,1,1]],
-      piano: [[0,2,4,5,3,1,2,0],[1,1.5,1,1,1,1.5,1,1]],
-      cafe: [[0,4,3,1,2,5,4,0],[1.5,1,1,1.5,1,1,1,1.5]],
-      nature: [[0,2,0,4,0,2,0,5],[2,1,2,1,2,1,2,1]],
-      jazz: [[0,4,2,5,1,3,0,6],[1.5,0.75,1.5,0.75,1,1,1.5,0.75]],
-      ambient: [[0,0,2,2,4,4,2,0],[3,2,3,2,2,3,2,3]],
-      guitar: [[0,2,4,2,0,3,5,3],[1,0.5,1,0.5,1,0.5,1,0.5]],
-      meditation: [[0,0,0,0,2,2,0,0],[4,3,4,3,4,3,4,3]],
+    // Bass octave
+    const bassNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 220.00, 246.94, 261.63];
+
+    // Extended sequences with chord progressions
+    const sequences: Record<string, { melody: number[]; rhythm: number[]; bass: number[]; chordRoots: number[] }> = {
+      gymnopedie: {
+        melody: [0,2,4,5,7,6,4,2, 0,2,4,1,3,5,4,2],
+        rhythm: [1.5,1,1.5,1,2,1,1.5,0.5, 1.5,1,1,1.5,1,1,1.5,1],
+        bass:    [0,0,3,3,4,4,3,3],
+        chordRoots: [0,3,4,5,0,3,2,0],
+      },
+      clair: {
+        melody: [0,3,5,7,6,4,2,0, 3,5,6,7,5,3,2,0],
+        rhythm: [2,1,1.5,1,1,1.5,1,2, 2,1,1,1.5,1,1,1,2],
+        bass:    [0,3,4,0,4,2,3,0],
+        chordRoots: [0,4,5,3,0,4,2,0],
+      },
+      lofi: {
+        melody: [0,1,3,4,2,3,5,4, 3,1,2,4,0,3,1,0],
+        rhythm: [0.75,0.75,1,0.75,0.75,1,0.75,0.75, 1,0.75,0.75,1,0.75,0.75,1,1],
+        bass:    [0,0,3,3,4,4,0,0],
+        chordRoots: [0,3,4,5,0,3,4,0],
+      },
+      piano: {
+        melody: [0,2,4,5,7,6,4,2, 0,3,5,7,5,3,2,0],
+        rhythm: [1,1.5,1,1,2,1,1.5,0.5, 1,1,1.5,1,1,1,1.5,1],
+        bass:    [0,3,4,5,0,3,2,0],
+        chordRoots: [0,3,4,5,0,3,2,0],
+      },
+      jazz: {
+        melody: [0,4,6,2,3,5,7,1, 0,4,3,6,5,2,7,0],
+        rhythm: [1,0.75,1.5,0.75,1,1,1.5,0.5, 0.75,1,0.75,1,0.75,1,0.75,1.5],
+        bass:    [0,3,4,5,0,3,2,0],
+        chordRoots: [0,3,4,2,0,3,6,0],
+      },
+      ambient: {
+        melody: [0,0,2,2,4,4,5,5, 3,3,5,5,2,2,0,0],
+        rhythm: [3,2,3,2,2,3,2,3, 3,2,3,2,2,3,2,3],
+        bass:    [0,0,4,4,5,5,2,2],
+        chordRoots: [0,0,4,4,5,5,2,2],
+      },
+      guitar: {
+        melody: [0,2,4,5,3,1,2,4, 0,4,2,5,3,6,4,0],
+        rhythm: [0.5,0.5,1,0.5,0.5,1,0.5,0.5, 1,0.5,0.5,1,0.5,0.5,1,1],
+        bass:    [0,3,4,2,3,0,4,0],
+        chordRoots: [0,4,5,3,4,0,2,0],
+      },
+      meditation: {
+        melody: [0,0,0,2,0,0,2,4, 2,0,2,4,0,0,0,0],
+        rhythm: [4,3,4,3,4,3,4,3, 4,3,4,3,4,3,4,3],
+        bass:    [0,0,0,0,2,2,0,0],
+        chordRoots: [0,0,0,0,4,4,0,0],
+      },
+      cafe: {
+        melody: [0,4,3,5,1,2,5,4, 0,3,5,4,2,0,4,3],
+        rhythm: [1.5,1,1,1.5,1,1,1,1.5, 1,1,1.5,1,1,1.5,1,1],
+        bass:    [0,4,3,5,0,2,4,3],
+        chordRoots: [0,4,3,5,0,2,4,3],
+      },
+      nature: {
+        melody: [0,2,0,4,0,2,0,5, 0,2,0,4,0,3,0,0],
+        rhythm: [2,1,2,1,2,1,2,1, 2,1,2,1,2,1,2,1],
+        bass:    [0,0,4,4,0,0,2,0],
+        chordRoots: [0,0,4,4,0,0,2,0],
+      },
     };
 
-    const [notes, durations] = sequences[musicType] || sequences.piano;
+    const seq = sequences[musicType] || sequences.piano;
     let noteIdx = 0;
-    let activeNodes: OscillatorNode[] = [];
+    let bassIdx = 0;
+    const activeNodes: AudioScheduledSourceNode[] = [];
+
+    // Helper: create a note with envelope
+    const createNote = (freq: number, type: OscillatorType, vol: number, dur: number, rampIn: number = 0.03, rampOut: number = 0.7) => {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = freq;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, ctx.currentTime);
+      env.gain.linearRampToValueAtTime(vol, ctx.currentTime + rampIn);
+      env.gain.linearRampToValueAtTime(0, ctx.currentTime + dur * rampOut);
+      osc.connect(env);
+      env.connect(musicGain!);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + dur + 0.15);
+      activeNodes.push(osc);
+      return { osc, env };
+    };
+
+    // Velocity jitter
+    const v = () => 0.85 + Math.random() * 0.15;
 
     const playNote = () => {
       if (!musicRunning || !musicGain) return;
-      activeNodes.forEach(n => { try { n.stop(); } catch {} });
-      activeNodes = [];
-      const freq = pentatonic[notes[noteIdx] % pentatonic.length];
-      const dur = durations[noteIdx] * 0.6;
-      const osc1 = ctx.createOscillator();
-      osc1.type = 'sine';
-      osc1.frequency.value = freq;
-      const env1 = ctx.createGain();
-      env1.gain.setValueAtTime(0, ctx.currentTime);
-      env1.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.05);
-      env1.gain.linearRampToValueAtTime(0, ctx.currentTime + dur * 0.9);
-      osc1.connect(env1);
-      env1.connect(musicGain);
-      osc1.start(ctx.currentTime);
-      osc1.stop(ctx.currentTime + dur + 0.1);
-      activeNodes.push(osc1);
+      // Clean old nodes (keep last 12)
+      while (activeNodes.length > 12) {
+        const n = activeNodes.shift()!;
+        try { n.stop(); } catch {}
+      }
 
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.value = musicType === 'jazz' ? freq * 1.414 : freq * 1.5;
-      const env2 = ctx.createGain();
-      env2.gain.setValueAtTime(0, ctx.currentTime);
-      env2.gain.linearRampToValueAtTime(musicType === 'ambient' ? 0.08 : 0.05, ctx.currentTime + 0.03);
-      env2.gain.linearRampToValueAtTime(0, ctx.currentTime + dur * 0.7);
-      osc2.connect(env2);
-      env2.connect(musicGain);
-      osc2.start(ctx.currentTime);
-      osc2.stop(ctx.currentTime + dur + 0.1);
-      activeNodes.push(osc2);
-      noteIdx = (noteIdx + 1) % notes.length;
+      const melodyNote = seq.melody[noteIdx % seq.melody.length];
+      const chordRoot = seq.chordRoots[noteIdx % seq.chordRoots.length];
+      const bassNote = seq.bass[bassIdx % seq.bass.length];
+      const dur = seq.rhythm[noteIdx % seq.rhythm.length] * 0.6;
+
+      const baseScale = musicType === 'jazz' ? cMajor : pentatonic;
+      const freq = baseScale[melodyNote % baseScale.length];
+
+      // Layer 1: Main voice (softer triangle for piano-like warmth)
+      createNote(freq, 'triangle', 0.12 * v(), dur);
+
+      // Layer 2: Harmonics (sine, softer)
+      createNote(freq * 2, 'sine', 0.04 * v(), dur, 0.05, 0.5);
+
+      // Layer 3: Chord - root + third + fifth
+      const chordFreqs = [
+        cMajor[chordRoot % cMajor.length],
+        cMajor[(chordRoot + 2) % cMajor.length],
+        cMajor[(chordRoot + 4) % cMajor.length],
+      ];
+      chordFreqs.forEach(cf => {
+        const osc = ctx.createOscillator();
+        osc.type = musicType === 'ambient' ? 'sine' : 'triangle';
+        osc.frequency.value = cf;
+        const env = ctx.createGain();
+        const chordVol = musicType === 'ambient' ? 0.06 : 0.04;
+        env.gain.setValueAtTime(0, ctx.currentTime);
+        env.gain.linearRampToValueAtTime(chordVol * v(), ctx.currentTime + 0.08);
+        env.gain.linearRampToValueAtTime(0, ctx.currentTime + dur * 0.8);
+        osc.connect(env);
+        env.connect(musicGain!);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + dur + 0.15);
+        activeNodes.push(osc);
+      });
+
+      // Layer 4: Bass (lower octave, triangle)
+      createNote(bassNotes[bassNote % bassNotes.length], 'triangle', 0.08 * v(), dur * 1.5, 0.05, 0.9);
+
+      // Layer 5: Stereo shimmer (for ambient/lofi types)
+      if (musicType === 'ambient' || musicType === 'meditation' || musicType === 'lofi') {
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = (noteIdx % 3 === 0) ? -0.4 : (noteIdx % 3 === 1) ? 0.4 : 0;
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq * 3;
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0, ctx.currentTime);
+        env.gain.linearRampToValueAtTime(0.03 * v(), ctx.currentTime + 0.1);
+        env.gain.linearRampToValueAtTime(0, ctx.currentTime + dur * 0.5);
+        osc.connect(env);
+        env.connect(pan);
+        pan.connect(musicGain!);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + dur + 0.15);
+        activeNodes.push(osc);
+      }
+
+      noteIdx = (noteIdx + 1) % seq.melody.length;
+      bassIdx = (bassIdx + 1) % seq.bass.length;
     };
 
     playNote();
     const interval = setInterval(() => {
       if (!musicRunning) { clearInterval(interval); return; }
       playNote();
-    }, durations[noteIdx === 0 ? notes.length - 1 : noteIdx - 1] * 600);
+    }, seq.rhythm[(noteIdx === 0 ? seq.rhythm.length - 1 : noteIdx - 1) % seq.rhythm.length] * 600);
     this._musicInterval = interval;
   }
 
