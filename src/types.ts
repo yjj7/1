@@ -5,6 +5,7 @@ export interface Scene {
   details: string;
   imageUrl: string;
   audioUrl?: string;
+  videoUrl?: string;
   videoId?: string;
 }
 
@@ -50,4 +51,41 @@ export interface Note {
   createdAt: string;
 }
 
-export interface Achievement { id: string; title: string; desc: string; icon: string; earned: boolean; }
+export interface Achievement {
+  id: string;
+  title: string;
+  desc: string;
+  icon: string;
+  earned: boolean;
+}
+
+// Shared types (unified from App.tsx / SetupPage.tsx duplicates)
+export interface ScenePresetItem {
+  id: string;
+  sceneId: string;
+  musicId: string;
+  label: string;
+}
+
+export interface MusicTrack {
+  id: string;
+  title: string;
+  audioUrl: string;
+}
+
+export interface PersistedState {
+  selectedSceneId: string;
+  selectedMusicId: string;
+  musicVolume: number;
+  bgVolume: number;
+  timerDuration: number;
+  tasks: Task[];
+  pomodoroCount: number;
+  customBgUrl: string;
+  dailyGoal: DailyGoal;
+  studyHistory: StudySession[];
+  streak: number;
+  scenePresets: ScenePresetItem[];
+  earnedAchievements: string[];
+  showOnboarding: boolean;
+}

@@ -23,13 +23,13 @@ export const MUSIC_TRACKS = [
 ];
 
 export const SCENES: Scene[] = [
-  { id: 'morning_window', title: '清晨窗边', description: '晨光、植物、安静书桌', details: '鸟鸣与微风', imageUrl: morningWindow, audioUrl: '/sounds/birds.mp3' },
-  { id: 'rainy_cafe', title: '雨天咖啡店', description: '暖灯、咖啡、低声环境', details: '雨声与隐约人声', imageUrl: rainyCafe, audioUrl: '/sounds/rain.mp3' },
-  { id: 'night_library', title: '深夜书房', description: '窗边、台灯、专属空间', details: '寂静与翻书声', imageUrl: nightLibrary, audioUrl: '' },
-  { id: 'seaside_study', title: '海边书房', description: '海风、蓝光、开阔视野', details: '海浪与微风', imageUrl: seasideStudy, audioUrl: '/sounds/ocean.mp3' },
-  { id: 'deep_night_desk', title: '深夜书桌', description: '台灯、笔记本、安静深夜', details: '键盘声与翻书声', imageUrl: nightHomeOffice, audioUrl: '/sounds/keyboard.mp3' },
-  { id: 'forest_cabin', title: '森林小屋', description: '木屋、壁炉、森林气息', details: '柴火燃烧与鸟鸣', imageUrl: forestCabin, audioUrl: '/sounds/forest.mp3' },
-  { id: 'city_skyline', title: '城市天际线', description: '高楼、霓虹、城市夜景', details: '远处车流与城市脉搏', imageUrl: citySkyline, audioUrl: '/sounds/cafe.mp3' },
+  { id: 'morning_window', title: '清晨窗边', description: '晨光、植物、安静书桌', details: '鸟鸣与微风', imageUrl: morningWindow, audioUrl: '/sounds/birds.mp3', videoUrl: '/videos/morning_window.mp4' },
+  { id: 'rainy_cafe', title: '雨天咖啡店', description: '暖灯、咖啡、低声环境', details: '雨声与隐约人声', imageUrl: rainyCafe, audioUrl: '/sounds/rain.mp3', videoUrl: '/videos/rainy_cafe.mp4' },
+  { id: 'night_library', title: '深夜书房', description: '窗边、台灯、专属空间', details: '寂静与翻书声', imageUrl: nightLibrary, audioUrl: '', videoUrl: '/videos/night_library.mp4' },
+  { id: 'seaside_study', title: '海边书房', description: '海风、蓝光、开阔视野', details: '海浪与微风', imageUrl: seasideStudy, audioUrl: '/sounds/ocean.mp3', videoUrl: '/videos/seaside_study.mp4' },
+  { id: 'deep_night_desk', title: '深夜书桌', description: '台灯、笔记本、安静深夜', details: '键盘声与翻书声', imageUrl: nightHomeOffice, audioUrl: '/sounds/keyboard.mp3', videoUrl: '/videos/deep_night_desk.mp4' },
+  { id: 'forest_cabin', title: '森林小屋', description: '木屋、壁炉、森林气息', details: '柴火燃烧与鸟鸣', imageUrl: forestCabin, audioUrl: '/sounds/forest.mp3', videoUrl: '/videos/forest_cabin.mp4' },
+  { id: 'city_skyline', title: '城市天际线', description: '高楼、霓虹、城市夜景', details: '远处车流与城市脉搏', imageUrl: citySkyline, audioUrl: '/sounds/cafe.mp3', videoUrl: '/videos/city_skyline.mp4' },
 ];
 
 export const DURATIONS = [25, 45, 50, 90];

@@ -1,7 +1,6 @@
-import React, { useMemo, useRef } from 'react';
-import { BookOpen, ArrowLeft, Flame, Target, TrendingUp, Calendar, Clock, Award, Download, Trophy } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ArrowLeft, BarChart3, Clock, Flame, CalendarDays, Award } from 'lucide-react';
 import { StudySession, DailyGoal, Achievement } from '../types';
-import { analyzeTimeSlots } from '../extras';
 import { useT } from '../i18n';
 
 interface Props {
@@ -13,33 +12,22 @@ interface Props {
   onBack: () => void;
 }
 
-export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achievements, onBack }: Props) {
+export function StatsPage({ studyHistory, streak, pomodoroCount, achievements, onBack }: Props) {
   const { t } = useT();
-  const cardRef = useRef<HTMLDivElement>(null);
-  const earnedCount = achievements.filter(a => a.earned).length;
 
   const stats = useMemo(() => {
     const now = new Date();
-    const totalMinutes = studyHistory.reduce((s, h) => s + h.duration, 0) / 60;
-    const totalTasks = studyHistory.reduce((s, h) => s + h.tasksCompleted, 0);
-    const thisWeek = studyHistory.filter(s => (now.getTime() - new Date(s.date).getTime()) < 7 * 86400000);
-    const weekMinutes = thisWeek.reduce((s, h) => s + h.duration, 0) / 60;
-    const timeSlots = analyzeTimeSlots(studyHistory);
+    const totalHours = studyHistory.reduce((s, h) => s + h.duration, 0) / 3600;
 
-    // Heatmap (pre-index by date for O(n) instead of O(n²))
+    const thisWeek = studyHistory.filter(s => (now.getTime() - new Date(s.date).getTime()) < 7 * 86400000);
+    const weekHours = thisWeek.reduce((s, h) => s + h.duration, 0) / 3600;
+
     const byDate = new Map<string, number>();
     studyHistory.forEach(s => {
       const ds = s.date.slice(0, 10);
       byDate.set(ds, (byDate.get(ds) || 0) + s.duration);
     });
-    const heatmap: { date: string; minutes: number }[] = [];
-    for (let i = 83; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 86400000);
-      const ds = d.toISOString().slice(0, 10);
-      heatmap.push({ date: ds, minutes: (byDate.get(ds) || 0) / 60 });
-    }
 
-    // Daily breakdown (reuse byDate index)
     const daily: { label: string; minutes: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400000);
@@ -47,118 +35,126 @@ export function StatsPage({ studyHistory, dailyGoal, streak, pomodoroCount, achi
       daily.push({ label: ['日', '一', '二', '三', '四', '五', '六'][d.getDay()], minutes: (byDate.get(ds) || 0) / 60 });
     }
 
-    return { totalMinutes, totalTasks, weekMinutes, timeSlots, heatmap, daily, maxDaily: Math.max(1, ...daily.map(d => d.minutes)) };
+    const maxDaily = Math.max(1, ...daily.map(d => d.minutes));
+
+    const heatmap: { date: string; minutes: number }[] = [];
+    for (let i = 83; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400000);
+      const ds = d.toISOString().slice(0, 10);
+      heatmap.push({ date: ds, minutes: (byDate.get(ds) || 0) / 60 });
+    }
+
+    return { totalHours, weekHours, daily, maxDaily, heatmap };
   }, [studyHistory]);
 
-  const todayMinutes = stats.daily[6]?.minutes || 0;
-  const goalProgress = Math.min(100, (todayMinutes / dailyGoal.targetMinutes) * 100);
-  const hc = (m: number) => m === 0 ? 'bg-white/5' : m < 15 ? 'bg-green-900/60' : m < 30 ? 'bg-green-700/70' : m < 60 ? 'bg-green-500/80' : 'bg-green-400';
+  const heatmapColor = (m: number) =>
+    m === 0 ? 'bg-white/5' : m < 15 ? 'bg-amber-900/40' : m < 30 ? 'bg-amber-700/60' : m < 60 ? 'bg-amber-500/70' : 'bg-amber-400';
 
-  const exportPNG = async () => {
-    if (!cardRef.current) return;
-    try {
-      // Use native canvas to draw report card
-      const canvas = document.createElement('canvas');
-      canvas.width = 800; canvas.height = 600;
-      const ctx = canvas.getContext('2d')!;
-      ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, 800, 600);
-      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.roundRect(20, 20, 760, 560, 24); ctx.fill();
-      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 32px sans-serif'; ctx.fillText('StudyWithMe AI 学习报告', 60, 80);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '16px sans-serif'; ctx.fillText(new Date().toISOString().slice(0, 10), 60, 110);
-      ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(60, 140, 680, 1);
-      const rows: [string, string, string][] = [
-        [t('totalTime'), `${Math.floor(stats.totalMinutes / 60)}h ${Math.round(stats.totalMinutes % 60)}m`, '#60a5fa'],
-        [t('pomodoros'), `${pomodoroCount}`, '#4ade80'], [t('streakDays'), `${streak} 天`, '#fb923c'],
-        [t('weekStudy'), `${Math.round(stats.weekMinutes)} 分钟`, '#a78bfa'], [t('todayGoal'), `${Math.round(goalProgress)}%`, '#f472b6'],
-      ];
-      rows.forEach(([l, v, c], i) => {
-        const y = 190 + i * 60;
-        ctx.fillStyle = c!; ctx.font = '14px sans-serif'; ctx.fillText(l!, 80, y);
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 28px sans-serif'; ctx.fillText(v!, 80, y + 28);
-      });
-      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '12px sans-serif'; ctx.fillText('nuomiyu.qzz.io • StudyWithMe AI', 60, 550);
-      const link = document.createElement('a');
-      link.download = `studywithme-report-${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch { alert(t('exportFailed')); }
+  const formatHours = (h: number) => {
+    const mins = Math.round(h * 60);
+    if (mins < 60) return `${mins}m`;
+    return `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`;
   };
 
-  return (
-    <div className="relative min-h-screen w-full bg-black text-white font-sans overflow-y-auto" ref={cardRef}>
-      <div className="fixed inset-0 z-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
-      <header className="relative z-10 flex items-center justify-between px-6 md:px-10 py-4">
-        <div className="flex items-center">
-          <button onClick={onBack} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors mr-4"><ArrowLeft className="w-5 h-5" /></button>
-          <BookOpen className="w-5 h-5 mr-3" /><span className="text-lg font-medium tracking-wide">{t('studyStats')}</span>
-        </div>
-        <button onClick={exportPNG} className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs"><Download className="w-3.5 h-3.5" /><span>{t('exportReport')}</span></button>
-      </header>
+  const summaryCards = [
+    { icon: <Clock className="w-4 h-4 text-[#C8A96E]" />, label: t('totalTime'), value: formatHours(stats.totalHours) },
+    { icon: <span className="text-sm">🍅</span>, label: t('pomodoros'), value: String(pomodoroCount) },
+    { icon: <Flame className="w-4 h-4 text-[#C8A96E]" />, label: t('streakDays'), value: `${streak} ${t('day')}` },
+    { icon: <CalendarDays className="w-4 h-4 text-[#C8A96E]" />, label: t('weekStudy'), value: formatHours(stats.weekHours) },
+  ];
 
-      <main className="relative z-10 max-w-5xl mx-auto px-4 md:px-10 pb-12">
-        {/* Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[{ i: <Clock className="w-5 h-5 text-blue-400" />, l: t('totalTime'), v: `${Math.floor(stats.totalMinutes / 60)}h ${Math.round(stats.totalMinutes % 60)}m` }, { i: <Target className="w-5 h-5 text-green-400" />, l: t('pomodoros'), v: `${pomodoroCount}` }, { i: <Flame className="w-5 h-5 text-orange-400" />, l: t('streakDays'), v: `${streak} 天` }, { i: <TrendingUp className="w-5 h-5 text-purple-400" />, l: t('weekStudy'), v: `${Math.round(stats.weekMinutes)} min` }].map((c, i) => (
-            <div key={i} className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10"><div className="flex items-center space-x-2 mb-2">{c.i}<span className="text-xs text-white/50">{c.l}</span></div><div className="text-2xl font-light">{c.v}</div></div>
+  return (
+    <div className="relative min-h-screen w-full bg-black text-white font-sans overflow-y-auto">
+      <div className="fixed inset-0 z-0 bg-gradient-to-br from-gray-950 via-black to-gray-950" />
+
+      <div className="relative z-10 max-w-3xl mx-auto px-6 py-8">
+        {/* Header */}
+        <header className="flex items-center mb-8">
+          <button onClick={onBack} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors mr-3">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <BarChart3 className="w-5 h-5 text-[#C8A96E] mr-2" />
+          <h1 className="text-xl font-medium tracking-wide">{t('studyStats')}</h1>
+        </header>
+
+        {/* Summary Cards – 2x2 grid */}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          {summaryCards.map((card, i) => (
+            <div key={i} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                {card.icon}
+                <span className="text-xs text-white/50">{card.label}</span>
+              </div>
+              <div className="text-xl font-light text-white/90">{card.value}</div>
+            </div>
           ))}
         </div>
 
-        {/* Achievements */}
-        {earnedCount > 0 && (
-          <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 mb-8">
-            <h3 className="text-lg font-medium mb-4 flex items-center space-x-2"><Trophy className="w-5 h-5 text-amber-400" /><span>{t("achievementsTitle").replace("N", `${earnedCount}/${achievements.length}`)}</span></h3>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-              {achievements.map(a => (
-                <div key={a.id} title={a.earned ? `${a.title}: ${a.desc}` : t('locked')} className={`p-3 rounded-xl text-center transition-all flex flex-col items-center ${a.earned ? 'bg-white/[0.03] border border-white/15' : 'bg-white/[0.01] border border-white/5 opacity-30'}`}>
-                  <span className="text-2xl mb-1">{a.earned ? a.icon : '🔒'}</span>
-                  <span className="text-[10px] text-white/60">{a.title}</span>
+        {/* Weekly Bar Chart – horizontal bars */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 mb-6">
+          <h3 className="text-sm font-medium text-white/70 mb-4">{t('weekStudy')}</h3>
+          <div className="space-y-2">
+            {stats.daily.map((day, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-7 text-xs text-white/50 text-right">{day.label}</span>
+                <div className="flex-1 h-5 bg-white/[0.04] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${(day.minutes / stats.maxDaily) * 100}%`,
+                      background: 'linear-gradient(90deg, rgba(200,169,110,0.3), rgba(200,169,110,0.85))',
+                    }}
+                  />
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Daily Goal */}
-        <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 mb-8">
-          <div className="flex items-center justify-between mb-4"><div className="flex items-center space-x-2"><Target className="w-5 h-5 text-green-400" /><span className="text-lg font-medium">{t("dailyGoalTitle")}</span></div><span className="text-sm text-white/60">{Math.round(todayMinutes)} / {dailyGoal.targetMinutes} {t("mins")}</span></div>
-          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden mb-2"><div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${goalProgress}%` }} /></div>
-          <div className="flex justify-between text-xs text-white/40"><span>{Math.round(goalProgress)}%</span><span>{goalProgress >= 100 ? t('achieved') : `${t('needMore')} ${Math.round(dailyGoal.targetMinutes - todayMinutes)} ${t('mins')}`}</span></div>
-        </div>
-
-        {/* Focus Time Analysis */}
-        <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 mb-8">
-          <h3 className="text-lg font-medium mb-4 flex items-center space-x-2"><Clock className="w-5 h-5 text-purple-400" /><span>{t("focusAnalysis")}</span></h3>
-          <div className="space-y-3">
-            {stats.timeSlots.map(slot => (
-              <div key={slot.label} className="flex items-center space-x-3">
-                <span className="text-sm text-white/60 w-20 flex-shrink-0">{slot.label}</span>
-                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-purple-500 to-pink-400 rounded-full transition-all" style={{ width: `${Math.min(100, slot.hours * 10)}%` }} />
-                </div>
-                <span className="text-xs text-white/40 w-20 text-right">{Math.round(slot.hours * 60)} {t("mins")}</span>
+                <span className="w-11 text-right text-xs text-white/40 tabular-nums">{Math.round(day.minutes)}m</span>
               </div>
             ))}
           </div>
-          {stats.timeSlots.every(s => s.hours === 0) && <p className="text-xs text-white/30 mt-4">{t('autoStatsDesc')}</p>}
         </div>
 
-        {/* Weekly */}
-        <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10 mb-8">
-          <h3 className="text-lg font-medium mb-4 flex items-center space-x-2"><Calendar className="w-5 h-5 text-blue-400" /><span>{t("weekStudy")}</span></h3>
-          <div className="flex items-end justify-between h-32 space-x-2">
-            {stats.daily.map((day, i) => (
-              <div key={day.label || `day-${i}`} className="flex-1 flex flex-col items-center"><span className="text-[10px] text-white/40 mb-1">{Math.round(day.minutes)}m</span><div className="w-full bg-white/5 rounded-t-lg relative" style={{ height: '100%' }}><div className="absolute bottom-0 w-full bg-gradient-to-t from-blue-500 to-cyan-400 rounded-t-lg transition-all duration-500" style={{ height: `${(day.minutes / stats.maxDaily) * 100}%` }} /></div><span className="text-xs text-white/60 mt-2">{day.label}</span></div>
+        {/* Heatmap – 12 week grid */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 mb-6">
+          <h3 className="text-sm font-medium text-white/70 mb-4">{t('heatmap')}</h3>
+          <div className="flex flex-wrap gap-1">
+            {stats.heatmap.map(day => (
+              <div
+                key={day.date}
+                title={`${day.date}: ${Math.round(day.minutes)} ${t('mins')}`}
+                className={`w-3 h-3 rounded-sm ${heatmapColor(day.minutes)}`}
+              />
             ))}
+          </div>
+          <div className="flex items-center justify-end gap-1 mt-3 text-[10px] text-white/30">
+            <span>少</span>
+            {['bg-white/5', 'bg-amber-900/40', 'bg-amber-700/60', 'bg-amber-500/70', 'bg-amber-400'].map((c, i) => (
+              <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />
+            ))}
+            <span>多</span>
           </div>
         </div>
 
-        {/* Heatmap */}
-        <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
-          <h3 className="text-lg font-medium mb-4 flex items-center space-x-2"><Award className="w-5 h-5 text-yellow-400" /><span>{t("heatmap")}</span></h3>
-          <div className="flex flex-wrap gap-1">{stats.heatmap.map((day, i) => <div key={day.date} title={`${day.date}: ${Math.round(day.minutes)} ${t('mins')}`} className={`w-3 h-3 rounded-sm ${hc(day.minutes)} transition-colors`} />)}</div>
-          <div className="flex items-center justify-end space-x-1 mt-3 text-[10px] text-white/40"><span>少</span>{['bg-white/5', 'bg-green-900/60', 'bg-green-700/70', 'bg-green-500/80', 'bg-green-400'].map((c, i) => <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />)}<span>多</span></div>
+        {/* Achievements – compact icon grid */}
+        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+          <h3 className="text-sm font-medium text-white/70 mb-4 flex items-center gap-2">
+            <Award className="w-4 h-4 text-[#C8A96E]" />
+            {t('latestAchievements')}
+          </h3>
+          <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+            {achievements.map(a => (
+              <div
+                key={a.id}
+                title={a.earned ? `${a.title}: ${a.desc}` : t('locked')}
+                className={`p-3 rounded-xl text-center flex flex-col items-center ${
+                  a.earned ? 'bg-white/[0.04] border border-white/10' : 'bg-white/[0.01] border border-white/5 opacity-30'
+                }`}
+              >
+                <span className="text-xl mb-1">{a.earned ? a.icon : '🔒'}</span>
+                <span className="text-[10px] text-white/40 leading-tight">{a.title}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,49 +1,27 @@
-﻿import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { BookOpen, Headphones, Volume2, ArrowRight, Upload, Music, Image, BarChart3, Clock, Target, Flame, Save, Star, Zap, Trash2 } from 'lucide-react';
 import { SCENES, DURATIONS, MUSIC_TRACKS } from '../data';
-import { DailyGoal } from '../types';
+import type { ScenePresetItem } from '../types';
 import { useT } from '../i18n';
-
-interface ScenePreset { id: string; sceneId: string; musicId: string; label: string; }
+import { useStudyStore } from '../store';
+import { recommendScene } from '../utils';
 
 interface SetupPageProps {
-  selectedSceneId: string;
-  onSelectScene: (id: string) => void;
-  selectedMusicId: string;
-  onSelectMusic: (id: string) => void;
-  musicVolume: number;
-  onMusicVolumeChange: (v: number) => void;
-  bgVolume: number;
-  onBgVolumeChange: (v: number) => void;
-  timerDuration: number;
-  onTimerDurationChange: (v: number) => void;
-  customMusicUrl: string;
-  onCustomMusicChange: (url: string) => void;
-  customBgUrl: string;
-  onCustomBgChange: (url: string) => void;
-  dailyGoal: DailyGoal;
-  onDailyGoalChange: (g: DailyGoal) => void;
-  scenePresets: ScenePreset[];
-  onSavePreset: (sceneId: string, musicId: string, label: string) => void;
-  onLoadPreset: (preset: ScenePreset) => void;
-  onDeletePreset: (id: string) => void;
-  recommendedScene: string;
   onBack: () => void;
   onStats: () => void;
   onHistory: () => void;
-  onEnter: () => void;
+  onEnter: (sceneId: string, musicId: string, musicVol: number, bgVol: number) => void;
 }
 
-export function SetupPage(props: SetupPageProps) {
+export function SetupPage({ onBack, onStats, onHistory, onEnter }: SetupPageProps) {
   const {
-    selectedSceneId, onSelectScene, selectedMusicId, onSelectMusic,
-    musicVolume, onMusicVolumeChange, bgVolume, onBgVolumeChange,
-    timerDuration, onTimerDurationChange,
-    customMusicUrl, onCustomMusicChange, customBgUrl, onCustomBgChange,
-    dailyGoal, onDailyGoalChange, scenePresets, onSavePreset, onLoadPreset, onDeletePreset,
-    recommendedScene,
-    onBack, onStats, onHistory, onEnter,
-  } = props;
+    selectedSceneId, selectedMusicId, musicVolume, bgVolume,
+    timerDuration, customMusicUrl, customBgUrl,
+    dailyGoal, scenePresets,
+    setScene, setMusic, setMusicVolume, setBgVolume,
+    setTimerDuration, setCustomMusicUrl, setCustomBgUrl,
+    setDailyGoal, savePreset, deletePreset,
+  } = useStudyStore();
 
   const activeScene = SCENES.find(s => s.id === selectedSceneId) || SCENES[0];
   const { t } = useT();
@@ -55,15 +33,24 @@ export function SetupPage(props: SetupPageProps) {
 
   const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) { if (customMusicUrl?.startsWith('blob:')) URL.revokeObjectURL(customMusicUrl); onCustomMusicChange(URL.createObjectURL(file)); onSelectMusic('custom'); }
+    if (file) {
+      if (customMusicUrl?.startsWith('blob:')) URL.revokeObjectURL(customMusicUrl);
+      setCustomMusicUrl(URL.createObjectURL(file));
+      setMusic('custom');
+    }
   };
   const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) { if (customBgUrl?.startsWith('blob:')) URL.revokeObjectURL(customBgUrl); onCustomBgChange(URL.createObjectURL(file)); }
+    if (file) {
+      if (customBgUrl?.startsWith('blob:')) URL.revokeObjectURL(customBgUrl);
+      setCustomBgUrl(URL.createObjectURL(file));
+      setScene('custom');
+    }
   };
 
   const currentScene = SCENES.find(s => s.id === selectedSceneId);
   const currentMusic = MUSIC_TRACKS.find(m => m.id === selectedMusicId);
+  const recScene = recommendScene();
 
   return (
     <div className="relative min-h-screen w-full flex flex-col text-white font-sans overflow-y-auto">
@@ -87,12 +74,12 @@ export function SetupPage(props: SetupPageProps) {
           <div className="mb-4">
             <div className="flex items-center space-x-2">
               <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 01</span>
-              <button onClick={() => { const r = SCENES[Math.floor(Math.random() * SCENES.length)]; onSelectScene(r.id); }}
+              <button onClick={() => { const r = SCENES[Math.floor(Math.random() * SCENES.length)]; setScene(r.id); }}
                 className="flex items-center space-x-1 text-[10px] text-purple-400/80 hover:text-purple-300 transition-colors">
                 <span>🎲</span><span>{t("randomScene")}</span>
               </button>
-              {recommendedScene && (
-                <button onClick={() => onSelectScene(recommendedScene)}
+              {recScene && (
+                <button onClick={() => setScene(recScene)}
                   className="flex items-center space-x-1 text-[10px] text-amber-400/80 hover:text-amber-300 transition-colors">
                   <Zap className="w-3 h-3" /><span>{t("recommendScene")}</span>
                 </button>
@@ -104,9 +91,9 @@ export function SetupPage(props: SetupPageProps) {
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               {SCENES.map((scene) => {
                 const isActive = scene.id === selectedSceneId;
-                const isRecommended = scene.id === recommendedScene;
+                const isRecommended = scene.id === recScene;
                 return (
-                  <button key={scene.id} onClick={() => onSelectScene(scene.id)}
+                  <button key={scene.id} onClick={() => setScene(scene.id)}
                     className={`group relative text-left flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ${isActive ? 'border-white/50 bg-white/10 ring-2 ring-white/20 shadow-lg shadow-white/5' : 'border-white/10 bg-black/20 hover:bg-white/5 hover:border-white/20'}`}>
                     <div className="aspect-[16/10] w-full overflow-hidden relative">
                       <img src={scene.imageUrl} alt={scene.title}
@@ -140,8 +127,8 @@ export function SetupPage(props: SetupPageProps) {
                     const pm = MUSIC_TRACKS.find(m => m.id === p.musicId);
                     return (
                       <div key={p.id} className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-xs">
-                        <button onClick={() => onLoadPreset(p)} className="hover:text-white transition-colors">{p.label || `${ps?.title || '?'} + ${pm?.title || '?'}`}</button>
-                        <button onClick={() => onDeletePreset(p.id)} className="text-white/20 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => { setScene(p.sceneId); setMusic(p.musicId); }} className="hover:text-white transition-colors">{p.label || `${ps?.title || '?'} + ${pm?.title || '?'}`}</button>
+                        <button onClick={() => deletePreset(p.id)} className="text-white/20 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     );
                   })}
@@ -160,7 +147,7 @@ export function SetupPage(props: SetupPageProps) {
             </div>
             <div className="flex space-x-2">
               <input value={presetLabel} onChange={(e) => setPresetLabel(e.target.value)} placeholder={t("comboPlaceholder")} className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 outline-none placeholder:text-white/20" />
-              <button onClick={() => { if (currentScene && currentMusic) { onSavePreset(selectedSceneId, selectedMusicId, presetLabel || `${currentScene.title}+${currentMusic.title}`); setPresetLabel(''); } }}
+              <button onClick={() => { if (currentScene && currentMusic) { savePreset({ id: Date.now().toString(), sceneId: selectedSceneId, musicId: selectedMusicId, label: presetLabel || `${currentScene.title}+${currentMusic.title}` }); setPresetLabel(''); } }}
                 className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs">{t("save")}</button>
             </div>
           </div>
@@ -173,7 +160,7 @@ export function SetupPage(props: SetupPageProps) {
               <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
                 <div className="flex items-center space-x-2 mb-3"><Headphones className="w-4 h-4 text-white/60" /><span className="text-sm font-medium">{t("music")}</span></div>
                 <label htmlFor="music-select" className="sr-only">{t('musicSelect')}</label>
-                <select id="music-select" value={selectedMusicId} onChange={(e) => onSelectMusic(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 outline-none cursor-pointer">
+                <select id="music-select" value={selectedMusicId} onChange={(e) => setMusic(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 outline-none cursor-pointer">
                   {MUSIC_TRACKS.map(m => <option key={m.id} value={m.id} className="text-black">{m.title}</option>)}
                 </select>
                 {selectedMusicId === 'custom' && (
@@ -185,7 +172,7 @@ export function SetupPage(props: SetupPageProps) {
                 )}
                 <div className="mt-3 relative h-6 flex items-center">
                   <div className="w-full h-1 bg-white/15 rounded-full relative"><div className="h-full bg-white/70 rounded-full transition-all" style={{ width: `${musicVolume}%` }} /><div className="w-3 h-3 bg-white rounded-full absolute -top-1 shadow transition-all" style={{ left: `${musicVolume}%`, marginLeft: '-6px' }} /></div>
-                  <input type="range" min="0" max="100" value={musicVolume} onChange={(e) => onMusicVolumeChange(Number(e.target.value))} className="w-full absolute opacity-0 cursor-pointer h-full" />
+                  <input type="range" min="0" max="100" value={musicVolume} onChange={(e) => setMusicVolume(Number(e.target.value))} className="w-full absolute opacity-0 cursor-pointer h-full" />
                 </div>
               </div>
               <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
@@ -193,7 +180,7 @@ export function SetupPage(props: SetupPageProps) {
                 <p className="text-[11px] text-white/40 mb-3">{t("bgAuto")}</p>
                 <div className="relative h-6 flex items-center">
                   <div className="w-full h-1 bg-white/15 rounded-full relative"><div className="h-full bg-white/70 rounded-full transition-all" style={{ width: `${bgVolume}%` }} /><div className="w-3 h-3 bg-white rounded-full absolute -top-1 shadow transition-all" style={{ left: `${bgVolume}%`, marginLeft: '-6px' }} /></div>
-                  <input type="range" min="0" max="100" value={bgVolume} onChange={(e) => onBgVolumeChange(Number(e.target.value))} className="w-full absolute opacity-0 cursor-pointer h-full" />
+                  <input type="range" min="0" max="100" value={bgVolume} onChange={(e) => setBgVolume(Number(e.target.value))} className="w-full absolute opacity-0 cursor-pointer h-full" />
                 </div>
               </div>
             </div>
@@ -204,10 +191,10 @@ export function SetupPage(props: SetupPageProps) {
             <span className="text-[10px] font-mono tracking-widest text-white/40">STEP 03</span>
             <h2 className="text-xl font-medium mt-1 mb-3 flex items-center space-x-2"><Target className="w-5 h-5" /><span>{t("stepGoal")}</span></h2>
             <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10">
-              <div className="flex items-center space-x-2 mb-3"><Flame className="w-4 h-4 text-orange-400" /><span className="text-sm">每日目标 `{dailyGoal.targetMinutes} {t("minutes")}</span></div>
+              <div className="flex items-center space-x-2 mb-3"><Flame className="w-4 h-4 text-orange-400" /><span className="text-sm">{`${t("dailyGoal")} ${dailyGoal.targetMinutes} ${t("minutes")}`}</span></div>
               <div className="grid grid-cols-3 gap-2">
                 {[60, 120, 180].map(min => (
-                  <button key={min} onClick={() => onDailyGoalChange({ targetMinutes: min })} className={`py-2 rounded-lg border text-xs transition-all ${dailyGoal.targetMinutes === min ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>{min >= 60 ? `${min / 60}h` : `${min}m`}</button>
+                  <button key={min} onClick={() => setDailyGoal({ targetMinutes: min })} className={`py-2 rounded-lg border text-xs transition-all ${dailyGoal.targetMinutes === min ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>{min >= 60 ? `${min / 60}h` : `${min}m`}</button>
                 ))}
               </div>
             </div>
@@ -220,15 +207,15 @@ export function SetupPage(props: SetupPageProps) {
             <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/10 flex-1 flex flex-col">
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {DURATIONS.map(dur => (
-                  <button key={dur} onClick={() => { onTimerDurationChange(dur); if (customTimeRef.current) customTimeRef.current.value = ''; }} className={`py-3 rounded-lg border text-sm transition-all ${timerDuration === dur ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>`{dur} {t("minutes")}</button>
+                  <button key={dur} onClick={() => { setTimerDuration(dur); if (customTimeRef.current) customTimeRef.current.value = ''; }} className={`py-3 rounded-lg border text-sm transition-all ${timerDuration === dur ? 'border-white bg-white/20 font-medium' : 'border-white/15 hover:bg-white/10'}`}>{`${dur} ${t("minutes")}`}</button>
                 ))}
                 <div className={`relative flex items-center rounded-lg border overflow-hidden ${!DURATIONS.includes(timerDuration) ? 'bg-white/15 border-white' : 'border-white/15'}`}>
-                  <input ref={customTimeRef} id="custom-time" type="number" placeholder={t("custom")} className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30" onChange={(e) => { const v = Number(e.target.value); if (v > 0) onTimerDurationChange(v); }} />
+                  <input ref={customTimeRef} id="custom-time" type="number" placeholder={t("custom")} className="w-full bg-transparent text-center outline-none py-3 text-sm placeholder:text-white/30" onChange={(e) => { const v = Number(e.target.value); if (v > 0) setTimerDuration(v); }} />
                   <span className="absolute right-3 text-xs text-white/40 pointer-events-none">min</span>
                 </div>
               </div>
               <div className="mt-auto">
-                <button onClick={onEnter} className="w-full py-3.5 rounded-full bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 group"><span>{t('enterRoom')}</span><ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></button>
+                <button onClick={() => onEnter(selectedSceneId, selectedMusicId, musicVolume, bgVolume)} className="w-full py-3.5 rounded-full bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 group"><span>{t('enterRoom')}</span><ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></button>
               </div>
             </div>
           </div>

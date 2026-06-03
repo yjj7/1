@@ -221,10 +221,10 @@ class AudioManager {
     if (!src) { opts?.onLoad?.(); return; }
     // Real audio file: use HTMLAudioElement (loopable with good quality)
     if (src.startsWith('blob:') || src.startsWith('http') || src.startsWith('/')) {
-      const audio = new Audio(src);
-      audio.addEventListener('canplaythrough', () => opts?.onLoad?.(), { once: true });
-      audio.addEventListener('error', () => opts?.onError?.(), { once: true });
-      audio.load();
+      this._musicAudioEl = new Audio(src);
+      this._musicAudioEl.addEventListener('canplaythrough', () => opts?.onLoad?.(), { once: true });
+      this._musicAudioEl.addEventListener('error', () => opts?.onError?.(), { once: true });
+      this._musicAudioEl.load();
     } else {
       setTimeout(() => opts?.onLoad?.(), 10);
     }
@@ -282,7 +282,7 @@ class AudioManager {
         gainNode.connect(ctx.destination);
       }
 
-      audio.play().catch(() => {});
+      audio.play().catch((e) => { console.error('Audio play failed:', e); });
 
       noiseNodes.set(id, {
         gain: gainNode,
@@ -296,7 +296,7 @@ class AudioManager {
     } catch (e) {
       console.error('Media element source creation failed, falling back:', e);
       audio.volume = volume / 100;
-      audio.play().catch(() => {});
+      audio.play().catch((e) => { console.error('Audio play failed:', e); });
       noiseNodes.set(id, {
         gain: ctx.createGain(),
         kill: () => { audio.pause(); audio.src = ''; },
@@ -560,7 +560,15 @@ class AudioManager {
     this._setupProcessingChain();
     const ctx = getCtx();
     bgGain = ctx.createGain();
-    bgGain.gain.value = this.bgVol;
+    const bgSrcLower = this.bgSrc.toLowerCase();
+    let reductionFactor = 1;
+    if (bgSrcLower.includes('rain')) reductionFactor = 0.25;
+    else if (bgSrcLower.includes('ocean')) reductionFactor = 0.3;
+    else if (bgSrcLower.includes('wind')) reductionFactor = 0.3;
+    else if (bgSrcLower.includes('thunder')) reductionFactor = 0.2;
+    else if (bgSrcLower.includes('fire')) reductionFactor = 0.5;
+    const adjustedVol = this.bgVol * reductionFactor;
+    bgGain.gain.value = adjustedVol;
 
     // Route through distance EQ
     if (this._distanceEQ) {
@@ -580,10 +588,10 @@ class AudioManager {
       const src = ctx.createMediaElementSource(audio);
       src.connect(bgGain);
       this._bgSource = src;
-      audio.play().catch(() => {});
+      audio.play().catch((e) => { console.error('Audio play failed:', e); });
     } catch (e) {
       console.error('Background audio media element source creation failed:', e);
-      audio.play().catch(() => {});
+      audio.play().catch((e) => { console.error('Audio play failed:', e); });
     }
   }
 
@@ -598,7 +606,6 @@ class AudioManager {
     bgRunning = false;
     if (this._bgAudioEl) { this._bgAudioEl.pause(); this._bgAudioEl.src = ''; this._bgAudioEl = null; }
     if (this._bgSource) { try { this._bgSource.disconnect(); } catch (e) { console.error('BG source disconnect failed:', e); } this._bgSource = null; }
-    if (bgSource) { try { bgSource.stop(); } catch (e) { console.error('BG source stop failed:', e); } bgSource = null; }
     if (bgGain) { bgGain.disconnect(); bgGain = null; }
   }
 }
@@ -608,7 +615,6 @@ let musicGain: GainNode | null = null;
 let musicRunning = false;
 
 let bgGain: GainNode | null = null;
-let bgSource: AudioBufferSourceNode | null = null;
 let bgRunning = false;
 
 const noiseNodes: Map<string, { gain: GainNode; kill: () => void }> = new Map();
