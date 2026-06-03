@@ -99,13 +99,29 @@ export function CinematicBackground({ imageUrl, sceneId, videoUrl, onLoad }: Cin
 
   // Video autoplay
   useEffect(() => {
-    if (!videoUrl) return;
+    if (!videoUrl) { setVideoLoaded(false); return; }
+    setVideoLoaded(false);
     const vid = videoRef.current;
     if (!vid) return;
-    vid.muted = true;
-    vid.loop = true;
-    vid.playsInline = true;
-    vid.play().then(() => setVideoLoaded(true)).catch(() => setVideoLoaded(false));
+
+    const onReady = () => {
+      setVideoLoaded(true);
+      vid.play().catch(() => {});
+    };
+    const onErr = () => {
+      console.warn('Video load failed:', videoUrl);
+      setVideoLoaded(false);
+    };
+
+    vid.addEventListener('loadeddata', onReady, { once: true });
+    vid.addEventListener('error', onErr, { once: true });
+    // Force reload when src changes
+    vid.load();
+
+    return () => {
+      vid.removeEventListener('loadeddata', onReady);
+      vid.removeEventListener('error', onErr);
+    };
   }, [videoUrl]);
 
   // Particle animation
@@ -225,7 +241,7 @@ export function CinematicBackground({ imageUrl, sceneId, videoUrl, onLoad }: Cin
     };
   }, [effect, initParticles]);
 
-  const showVideo = videoUrl && videoLoaded;
+  const showVideo = !!videoUrl && videoLoaded;
   const showImage = !showVideo && imgLoaded;
 
   return (
