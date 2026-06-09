@@ -32,21 +32,3 @@
     animation: video-noise 0.8s steps(1) infinite;
   }
 }
-
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.6; }
-  50% { transform: scale(1); opacity: 0.15; }
-  100% { transform: scale(0.8); opacity: 0.6; }
-}
-
-@keyframes scan-line {
-  0% { top: 30%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 70%; opacity: 0; }
-}
-
-@keyframes slowDrift {
-  0% { transform: scale(1) translate(0, 0); }
-  100% { transform: scale(1.05) translate(-1%, -1%); }
-}

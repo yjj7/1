@@ -1,393 +1,582 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect } from "react";
 import {
-  BookOpen, X, Play, Pause, Maximize, RotateCcw, SkipForward, Music,
-} from 'lucide-react';
-import type { Task, StudySession, TimerMode, PomodoroPhase, TaskCategory } from '../types';
-import { SCENES } from '../data';
-import { audioManager, playClickSound, playSuccessSound, playMeditationChime } from '../audioManager';
-import { CinematicBackground } from './CinematicBackground';
-import { SceneClock } from './SceneClock';
-import { AudioVisualizer } from './AudioVisualizer';
-import { TaskPanel } from './TaskPanel';
-import { AudioPanel } from './AudioPanel';
-import { MeditationGuide } from './MeditationGuide';
-import { useT } from '../i18n';
-import { useStudyStore } from '../store';
+  Aperture,
+  X,
+  Play,
+  Pause,
+  SkipForward,
+  RotateCcw,
+  Target,
+  Volume2,
+  MoveDiagonal,
+  Maximize,
+  Minimize,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Scene, Task } from "../types";
+import { SCENES, MUSIC_TRACKS } from "../data";
+import { audioManager } from "../audioManager";
+import { CinematicBackground } from "./CinematicBackground";
 
 interface TimerPageProps {
+  sceneId: string;
+  musicId: string;
+  onSelectMusic: (id: string) => void;
+  durationMinutes: number;
+  musicVolume: number;
+  bgVolume: number;
   onExit: () => void;
+  onMusicVolumeChange: (val: number) => void;
+  onBgVolumeChange: (val: number) => void;
+  tasks: Task[];
+  onTasksChange: (val: Task[]) => void;
+  pomodoroCount: number;
   onPomodoroComplete: () => void;
-  onRecordSession: (s: StudySession) => void;
-  onSceneChange: (sceneId: string) => void;
 }
 
-const MEDITATION_SECONDS = 30;
-
-const SCENE_EMOJI: Record<string, string> = {
-  morning_window: '🌅', rainy_cafe: '🌧️', night_library: '📚',
-  seaside_study: '🌊', deep_night_desk: '💻', forest_cabin: '🌲', city_skyline: '🌆',
-};
-
 export function TimerPage({
-  onExit, onPomodoroComplete, onRecordSession, onSceneChange,
+  sceneId,
+  musicId,
+  onSelectMusic,
+  durationMinutes,
+  musicVolume,
+  bgVolume,
+  onExit,
+  onMusicVolumeChange,
+  onBgVolumeChange,
+  tasks,
+  onTasksChange,
+  pomodoroCount,
+  onPomodoroComplete,
 }: TimerPageProps) {
-  const { t } = useT();
-  const store = useStudyStore();
-  const scene = SCENES.find((s) => s.id === store.selectedSceneId) || SCENES[0];
+  const activeScene = SCENES.find((s) => s.id === sceneId) || SCENES[0];
 
-  // ---- Timer state ----
-  const [pomodoroPhase, setPomodoroPhase] = useState<PomodoroPhase>('meditation');
-  const isBreak = ['shortBreak', 'longBreak'].includes(pomodoroPhase);
-  const [timerMode, setTimerMode] = useState<TimerMode>('countdown');
-  const [meditationTime, setMeditationTime] = useState(MEDITATION_SECONDS);
-  const [timeLeft, setTimeLeft] = useState(store.timerDuration * 60);
-  const [timeElapsed, setTimeElapsed] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [showCompletion, setShowCompletion] = useState(false);
-  const sessionStartRef = useRef(Date.now());
-
-  // ---- UI state ----
+  const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
+  const [isRunning, setIsRunning] = useState(true);
   const [isImmersive, setIsImmersive] = useState(false);
   const [showImmersiveUI, setShowImmersiveUI] = useState(true);
-  const [showMinimalClock, setShowMinimalClock] = useState(false);
-  const [showAudioPanel, setShowAudioPanel] = useState(false);
+  const [newTaskText, setNewTaskText] = useState("");
 
-  // ---- Task state ----
-  const [newTaskText, setNewTaskText] = useState('');
-  const [taskCategory, setTaskCategory] = useState<TaskCategory>('study');
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-
-  // ---- Breathing ----
-  const [breathingPhase, setBreathingPhase] = useState(0);
-  const [breatheLabel, setBreatheLabel] = useState<'in' | 'hold' | 'out'>('in');
-  const lastTickRef = useRef(Date.now());
-
-  // ---- Audio sync ----
-  useEffect(() => { audioManager.setMusicVolume(store.musicVolume / 100); }, [store.musicVolume]);
-  useEffect(() => { audioManager.setBgVolume(store.bgVolume / 100); }, [store.bgVolume]);
   useEffect(() => {
-    const url = store.selectedMusicId === 'custom' && store.customMusicUrl
-      ? store.customMusicUrl
-      : store.selectedMusicId;
-    if (url) audioManager.setMusic(url);
-  }, [store.selectedMusicId, store.customMusicUrl]);
+    audioManager.setMusicVolume(musicVolume / 100);
+  }, [musicVolume]);
+
   useEffect(() => {
-    if (scene.audioUrl) { audioManager.setBg(scene.audioUrl); if (isRunning) audioManager.playBg(); }
-  }, [scene.audioUrl]);
-  useEffect(() => { isRunning ? audioManager.play() : audioManager.pause(); }, [isRunning]);
+    audioManager.setBgVolume(bgVolume / 100);
+  }, [bgVolume]);
 
-  // ---- Meditation breathing animation ----
   useEffect(() => {
-    if (pomodoroPhase !== 'meditation' || meditationTime <= 0) return;
-    const iv = setInterval(() => {
-      const elapsed = MEDITATION_SECONDS - meditationTime + 1;
-      const phaseTime = elapsed % 6;
-      if (phaseTime < 2) setBreatheLabel('in');
-      else if (phaseTime < 3) setBreatheLabel('hold');
-      else setBreatheLabel('out');
-    }, 100);
-    return () => clearInterval(iv);
-  }, [meditationTime, pomodoroPhase]);
+    const track = MUSIC_TRACKS.find((m) => m.id === musicId);
+    if (track) {
+      audioManager.setMusic(track.audioUrl);
+      if (isRunning) audioManager.play();
+    }
+  }, [musicId]);
 
-  // ---- Glow animation ----
   useEffect(() => {
-    if (!isRunning || showCompletion) return;
-    const t = setInterval(() => setBreathingPhase((p) => (p + 1) % 100), 50);
-    return () => clearInterval(t);
-  }, [isRunning, showCompletion]);
+    if (activeScene.audioUrl) {
+      audioManager.setBg(activeScene.audioUrl);
+      if (isRunning) audioManager.play();
+    }
+  }, [activeScene.audioUrl]);
 
-  // ---- Notification ----
+  // Manage playback state
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
-  }, []);
+    if (isRunning) {
+      audioManager.play();
+    } else {
+      audioManager.pause();
+    }
+  }, [isRunning]);
 
-  const sendNotification = useCallback((title: string, body: string) => {
-    if ('Notification' in window && Notification.permission === 'granted')
-      new Notification(title, { body, icon: '/favicon.svg' });
-  }, []);
+  const totalTime = durationMinutes * 60;
+  const progressPercent = ((totalTime - timeLeft) / totalTime) * 100;
 
-  // ---- Timer logic ----
-  const getBreakDuration = () => store.pomodoroCount > 0 && store.pomodoroCount % 4 === 0 ? 15 : 5;
+  const playDing = () => {
+    try {
+      const ctx = new (
+        window.AudioContext || (window as any).webkitAudioContext
+      )();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 2);
+    } catch (e) {
+      console.warn("AudioContext not available");
+    }
+  };
 
-  const recordAndFinish = useCallback(() => {
-    const dur = (Date.now() - sessionStartRef.current) / 1000;
-    const completed = store.tasks.filter((t) => t.completed).length;
-    onRecordSession({
-      id: Date.now().toString(), date: new Date().toISOString(), duration: dur,
-      sceneId: store.selectedSceneId, tasksCompleted: completed, tasksTotal: store.tasks.length, timerMode,
-    });
-    setShowCompletion(true); setIsRunning(false);
-    onPomodoroComplete(); playSuccessSound();
-    sendNotification(t('studyComplete'),
-      `${t('studyCompleteDesc').replace('/', '')} ${Math.round(dur / 60)} ${t('minutes')}${completed}/${store.tasks.length}`);
-  }, [store.tasks, store.selectedSceneId, timerMode, onRecordSession, onPomodoroComplete, sendNotification, t]);
+  const handleFinish = () => {
+    setTimeLeft(0);
+    setIsRunning(false);
+    onPomodoroComplete();
+    playDing();
+  };
 
-  const handleBreakFinish = useCallback(() => {
-    setPomodoroPhase('study'); setTimerMode('countdown'); setTimeLeft(store.timerDuration * 60); setIsRunning(true);
-    sessionStartRef.current = Date.now();
-    sendNotification(t('breakEnd'), t('breakEndDesc'));
-  }, [store.timerDuration, sendNotification, t]);
-
-  // ---- Meditation countdown ----
   useEffect(() => {
-    if (pomodoroPhase !== 'meditation') return;
-    const iv = setInterval(() => {
-      setMeditationTime((prev) => {
-        if (prev <= 1) { setIsRunning(true); setPomodoroPhase('study'); sessionStartRef.current = Date.now(); playMeditationChime(); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(iv);
-  }, [pomodoroPhase]);
+    const mainTask = tasks.find((t) => !t.completed)?.text || "专注中";
+    document.title = `${formatTime(timeLeft)} - ${mainTask} | 深境`;
+    return () => {
+      document.title = "深境";
+    };
+  }, [timeLeft, tasks]);
 
-  // ---- Main timer ----
   useEffect(() => {
-    if (!isRunning || showCompletion || pomodoroPhase === 'meditation') return;
-    lastTickRef.current = Date.now();
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const delta = Math.max(1, Math.round((now - lastTickRef.current) / 1000));
-      lastTickRef.current = now;
-      if (timerMode === 'countdown') {
-        setTimeLeft((prev) => {
-          const next = prev - delta;
-          if (next <= 0) { clearInterval(interval); (isBreak ? handleBreakFinish() : recordAndFinish()); return 0; }
-          return next;
-        });
-      } else { setTimeElapsed((prev) => prev + delta); }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isRunning, timerMode, pomodoroPhase, handleBreakFinish, recordAndFinish, showCompletion, isBreak]);
+    if (!isImmersive) {
+      setShowImmersiveUI(true);
+      return;
+    }
 
-  // ---- Immersive ----
-  useEffect(() => {
-    if (!isImmersive) { setShowImmersiveUI(true); return; }
     let timeout: ReturnType<typeof setTimeout>;
-    const handle = () => { setShowImmersiveUI(true); clearTimeout(timeout); timeout = setTimeout(() => setShowImmersiveUI(false), 2500); };
-    window.addEventListener('mousemove', handle);
+    const handleMouseMove = () => {
+      setShowImmersiveUI(true);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setShowImmersiveUI(false), 2500);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
     timeout = setTimeout(() => setShowImmersiveUI(false), 2500);
-    return () => { window.removeEventListener('mousemove', handle); clearTimeout(timeout); };
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      clearTimeout(timeout);
+    };
   }, [isImmersive]);
 
   const toggleImmersive = async (enter: boolean) => {
     setIsImmersive(enter);
     try {
-      if (enter && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-      else if (!enter && document.fullscreenElement) await document.exitFullscreen();
-    } catch (e) { console.error('Fullscreen API failed:', e); }
-  };
-
-  // ---- Keyboard ----
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.code === 'Space') { e.preventDefault(); setIsRunning((p) => !p); playClickSound(); }
-      else if (e.code === 'Escape' && isImmersive) toggleImmersive(false);
-      else if (e.code === 'KeyM') setShowMinimalClock((p) => !p);
-    };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [isImmersive]);
-
-  // ---- Tasks ----
-  const addTask = () => {
-    if (!newTaskText.trim()) return;
-    store.setTasks([...store.tasks, { id: Date.now().toString(), text: newTaskText.trim(), completed: false, category: taskCategory }]);
-    setNewTaskText('');
-  };
-  const toggleTask = (id: string) => store.setTasks(store.tasks.map((tk) => tk.id === id ? { ...tk, completed: !tk.completed } : tk));
-  const removeTask = (id: string) => store.setTasks(store.tasks.filter((tk) => tk.id !== id));
-  const handleDragStart = (idx: number) => setDragIdx(idx);
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (dragIdx !== null && dragIdx !== idx) {
-      const newTasks = [...store.tasks];
-      const [moved] = newTasks.splice(dragIdx, 1);
-      newTasks.splice(idx, 0, moved);
-      store.setTasks(newTasks);
-      setDragIdx(idx);
+      if (enter && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if (!enter && document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch (e) {
+      console.warn("Fullscreen API failed", e);
     }
   };
 
-  // ---- Helpers ----
-  const fmt = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isRunning && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            handleFinish();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning, timeLeft, handleFinish]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
-  const currentTotal = isBreak ? getBreakDuration() * 60 : store.timerDuration * 60;
-  const timePercent = pomodoroPhase === 'meditation'
-    ? ((MEDITATION_SECONDS - meditationTime) / MEDITATION_SECONDS) * 100
-    : Math.min(100, ((currentTotal - timeLeft) / currentTotal) * 100);
 
-  const isEnding = pomodoroPhase === 'study' && timerMode === 'countdown' && timeLeft <= 10 && timeLeft > 0;
-  const glowStyle = isRunning && !isBreak && !showCompletion
-    ? { textShadow: `0 0 ${Math.sin(breathingPhase / 100 * Math.PI) * 15}px rgba(255,255,255,${0.1 + Math.sin(breathingPhase / 100 * Math.PI) * 0.15})` }
-    : {};
+  const handleReset = () => setTimeLeft(durationMinutes * 60);
 
-  // ---- Minimal clock mode ----
-  if (showMinimalClock) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center cursor-pointer" onClick={() => setShowMinimalClock(false)}>
-        <SceneClock />
-        <span className="text-[10rem] font-thin text-white tabular-nums mt-8" style={glowStyle}>{fmt(timeLeft)}</span>
-        <span className="text-sm text-white/20 mt-4">{t('backToHome')}</span>
-        {isEnding && <div className="absolute inset-0 bg-gradient-to-t from-white/5 via-transparent to-transparent pointer-events-none" style={{ opacity: (10 - timeLeft) / 10 }} />}
-      </div>
-    );
-  }
-
-  // ---- Main render ----
   return (
-    <div className={`relative min-h-screen w-full flex flex-col text-white font-sans overflow-hidden ${isImmersive && !showImmersiveUI ? 'cursor-none' : ''}`}>
-      {/* Background layer */}
-      <motion.div key={scene.id} className="absolute inset-0 z-0 bg-black" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5 }}>
-        <CinematicBackground imageUrl={store.customBgUrl && store.selectedSceneId === 'custom' ? store.customBgUrl : scene.imageUrl} sceneId={scene.id} />
-        <SceneClock />
-        <div
-          className={`absolute inset-0 transition-all duration-[10s] z-10 ${isImmersive ? 'bg-black/0' : isBreak ? 'bg-emerald-900/30' : isEnding ? 'bg-gradient-to-t from-white/[0.02] to-transparent' : 'bg-black/10'}`}
-          style={isEnding ? { opacity: (10 - timeLeft) / 10 * 0.5 } : {}}
+    <div
+      className={`relative min-h-screen w-full flex flex-col text-white font-sans overflow-hidden ${isImmersive && !showImmersiveUI ? "cursor-none" : ""}`}
+    >
+      {/* Background Image */}
+      <motion.div
+        key={activeScene.id}
+        className="absolute inset-0 z-0 bg-black"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.5 }}
+      >
+        <CinematicBackground
+          imageUrl={activeScene.imageUrl}
+          sceneId={activeScene.id}
         />
-        <AudioVisualizer />
+        <div
+          className={`absolute inset-0 transition-opacity duration-1000 z-10 ${isImmersive ? "bg-black/0" : "bg-black/10"}`}
+        ></div>
       </motion.div>
 
-      {/* Completion overlay */}
-      <AnimatePresence>
-        {showCompletion && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center">
-            <div className="text-center p-10 rounded-[3rem] bg-white/[0.03] border border-white/10">
-              <span className="text-6xl mb-4 block">🍅</span>
-              <h2 className="text-3xl font-medium mb-4">{t('completed')}</h2>
-              <p className="text-white/60 mb-6">{store.pomodoroCount + 1} {t('pomodoroDone')}</p>
-              <div className="flex space-x-4 justify-center">
-                <button onClick={() => { const dur = getBreakDuration(); setPomodoroPhase('shortBreak'); setTimerMode('countdown'); setTimeLeft(dur * 60); setIsRunning(true); setShowCompletion(false); setMeditationTime(0); sessionStartRef.current = Date.now(); }} className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm border border-white/20">{t('shortBreak')}</button>
-                <button onClick={() => { setPomodoroPhase('longBreak'); setTimerMode('countdown'); setTimeLeft(15 * 60); setIsRunning(true); setShowCompletion(false); setMeditationTime(0); sessionStartRef.current = Date.now(); }} className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm border border-white/20">{t('longBreak')}</button>
-              </div>
-              <button onClick={() => { setShowCompletion(false); onExit(); }} className="mt-4 text-sm text-white/40 hover:text-white/60 transition-colors">{t('backToHome')}</button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Meditation guide */}
-      {pomodoroPhase === 'meditation' && (
-        <MeditationGuide
-          meditationTime={meditationTime}
-          breatheLabel={breatheLabel}
-          onSkip={() => { setPomodoroPhase('study'); setIsRunning(true); setMeditationTime(0); sessionStartRef.current = Date.now(); }}
-        />
-      )}
-
-      {/* Header */}
       <AnimatePresence>
         {!isImmersive && (
-          <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="relative z-10 flex items-center justify-between px-8 py-5">
+          <motion.header
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="relative z-10 flex items-center justify-between px-8 py-6"
+          >
             <div className="flex items-center space-x-4">
-              <button onClick={onExit} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors border border-white/20"><X className="w-4 h-4" /></button>
-              <BookOpen className="w-5 h-5" /><span className="text-lg font-medium tracking-wide">{t('appName')}</span>
-              <span className="text-sm text-white/40 hidden md:inline">{scene.title}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button onClick={() => setShowAudioPanel((p) => !p)}
-                className={`p-2 rounded-full border transition-colors text-sm ${showAudioPanel ? 'bg-white/15 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'}`}
-                title={t('bgAudio')}>
-                <Music className="w-4 h-4" />
+              <button
+                onClick={onExit}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors border border-white/20"
+              >
+                <X className="w-5 h-5" />
               </button>
-              <button onClick={() => toggleImmersive(true)} className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition-colors text-sm">
-                <Maximize className="w-4 h-4" /><span>{t('immersive')}</span>
+              <div className="flex items-center space-x-3">
+                <Aperture className="w-5 h-5" strokeWidth={1.5} />
+                <span className="text-xl font-medium tracking-widest">
+                  深境
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => toggleImmersive(true)}
+                className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm text-sm hover:bg-white/20 transition-colors"
+              >
+                <MoveDiagonal className="w-4 h-4" />
+                <span>沉浸模式</span>
+              </button>
+              <button
+                onClick={onExit}
+                className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm text-sm hover:bg-white/20 transition-colors"
+              >
+                <span>← 返回首页</span>
               </button>
             </div>
           </motion.header>
         )}
       </AnimatePresence>
 
-      <main className="relative z-10 flex-1 w-full h-full px-8 pb-8 flex flex-col justify-end pointer-events-none">
-        {/* Timer display */}
-        <motion.div className="pointer-events-auto absolute right-8 bottom-32 md:right-24 md:bottom-40 p-6 rounded-[2rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl w-72">
+      {!isImmersive && (
+        <div className="absolute top-24 right-8 z-10 text-right">
+          <span className="text-sm font-medium text-white/70 tracking-widest">
+            {activeScene.title}
+          </span>
+        </div>
+      )}
+
+      {/* Main Container for Widgets */}
+      <main className="relative z-10 flex-1 w-full h-full p-8 flex flex-col justify-end pointer-events-none">
+        {/* Timer Widget - Always visible, but moves slightly down left */}
+        <motion.div
+          layout
+          className="pointer-events-auto absolute left-8 bottom-32 md:left-24 md:bottom-40 p-6 rounded-[2rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl w-72"
+        >
           <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-mono tracking-widest text-white/60 uppercase">
-              {isBreak ? 'RELAX' : t('pomodoro')} #{store.pomodoroCount + 1}
+            <span className="text-xs font-medium tracking-widest text-white/80">
+              专注闹钟 #{pomodoroCount + 1}
             </span>
             <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
-              <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-green-400 animate-pulse' : 'bg-green-400/50'}`} />
-              <span className="text-[10px] text-green-400/80 uppercase">{timerMode === 'stopwatch' ? '⏱️' : '⏳'}</span>
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-green-400 animate-pulse" : "bg-green-400/50"}`}
+              ></div>
+              <span className="text-xs text-green-300 font-medium tracking-wide">
+                {timeLeft === 0 ? "已完成" : isRunning ? "学习中" : "已暂停"}
+              </span>
             </div>
           </div>
-          <div className="text-6xl font-light tracking-tight mb-4 tabular-nums" style={glowStyle}>
-            {timerMode === 'stopwatch' ? fmt(timeElapsed) : fmt(timeLeft)}
+
+          <div className="text-6xl font-light tracking-tight mb-8 tabular-nums">
+            {formatTime(timeLeft)}
           </div>
-          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2">
-            <div className={`h-full rounded-full transition-all duration-1000 ${isBreak ? 'bg-emerald-500' : timeLeft <= 30 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${timePercent}%` }} />
-          </div>
-          <div className="flex justify-center space-x-4 mt-4">
-            <button onClick={() => { setIsRunning(false); setTimeLeft(store.timerDuration * 60); }} className="p-2 rounded-full hover:bg-white/10 transition-colors" title={t('reset')} aria-label={t('reset')}>
-              <RotateCcw className="w-5 h-5" />
-            </button>
-            <button onClick={() => { setIsRunning(!isRunning); playClickSound(); }} className="p-3 rounded-full bg-white hover:bg-white/90 transition-colors">
-              {isRunning ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
-            </button>
-            {isBreak && (
-              <button onClick={handleBreakFinish} className="p-2 rounded-full hover:bg-white/10 transition-colors" title={t('skipBreak')} aria-label={t('skipBreak')}>
-                <SkipForward className="w-5 h-5" />
-              </button>
-            )}
+
+          <div className="flex flex-col space-y-2">
+            <div className="flex justify-between text-xs text-white/50">
+              <span>本轮进度</span>
+              <span>{Math.round(progressPercent)}%</span>
+            </div>
+            <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-white transition-all duration-1000 ease-linear"
+                style={{ width: `${progressPercent}%` }}
+              ></div>
+            </div>
           </div>
         </motion.div>
 
-        {/* Non-immersive overlays */}
-        {!isImmersive && (
-          <>
-            <TaskPanel
-              tasks={store.tasks}
-              newTaskText={newTaskText}
-              setNewTaskText={setNewTaskText}
-              taskCategory={taskCategory}
-              setTaskCategory={setTaskCategory}
-              addTask={addTask}
-              toggleTask={toggleTask}
-              removeTask={removeTask}
-              dragIdx={dragIdx}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={() => setDragIdx(null)}
-            />
-
-            {/* Scene switcher */}
-            <div className="pointer-events-auto absolute left-8 bottom-6 md:left-24 md:bottom-10 p-2.5 rounded-2xl bg-white/[0.02] backdrop-blur-sm border border-white/10">
-              <div className="flex items-center space-x-1.5">
-                {SCENES.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { onSceneChange(s.id); playClickSound(); }}
-                    className={`flex flex-col items-center p-1.5 rounded-xl transition-all min-w-[48px] ${store.selectedSceneId === s.id ? 'bg-white/15 border border-white/30' : 'bg-white/[0.02] border border-white/5 hover:bg-white/10 hover:border-white/20'}`}
-                    title={s.title}
-                  >
-                    <span className="text-base leading-none">{SCENE_EMOJI[s.id] || '🎬'}</span>
-                    <span className={`text-[8px] mt-0.5 leading-tight ${store.selectedSceneId === s.id ? 'text-white/70' : 'text-white/25'}`}>{s.title.slice(0, 4)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Audio panel */}
+        {/* Bottom Control Bar */}
         <AnimatePresence>
-          {showAudioPanel && (
-            <AudioPanel
-              musicId={store.selectedMusicId}
-              onSelectMusic={(id) => store.setMusic(id)}
-              musicVolume={store.musicVolume}
-              onMusicVolumeChange={(v) => store.setMusicVolume(v)}
-              bgVolume={store.bgVolume}
-              onBgVolumeChange={(v) => store.setBgVolume(v)}
-              onClose={() => setShowAudioPanel(false)}
-            />
+          {!isImmersive && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="pointer-events-auto w-full max-w-4xl mx-auto flex flex-col space-y-4 mb-4"
+            >
+              {/* Tasks List */}
+              <div className="flex flex-col space-y-2 w-2/3 mx-auto max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                {tasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`flex items-center justify-between px-6 py-3 rounded-2xl bg-white/[0.01] backdrop-blur-[2px] border ${t.completed ? "border-white/5 opacity-50" : "border-white/10"} shadow-xl`}
+                  >
+                    <div className="flex items-center space-x-3 w-full">
+                      <button
+                        onClick={() =>
+                          onTasksChange(
+                            tasks.map((ct) =>
+                              ct.id === t.id
+                                ? { ...ct, completed: !ct.completed }
+                                : ct,
+                            ),
+                          )
+                        }
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${t.completed ? "bg-green-500 border-green-500 text-black" : "border-white/30 hover:border-white/60"}`}
+                      >
+                        {t.completed && (
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </button>
+                      <span
+                        className={`text-sm ${t.completed ? "line-through text-white/50" : "text-white/90"}`}
+                      >
+                        {t.text}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        onTasksChange(tasks.filter((ct) => ct.id !== t.id))
+                      }
+                      className="text-white/20 hover:text-white/60"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center space-x-3 px-6 py-3 rounded-2xl bg-white/[0.01] backdrop-blur-[2px] border border-white/5 shadow-xl">
+                  <Target className="w-4 h-4 text-white/40" />
+                  <input
+                    type="text"
+                    value={newTaskText}
+                    onChange={(e) => setNewTaskText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newTaskText.trim()) {
+                        onTasksChange([
+                          ...tasks,
+                          {
+                            id: Date.now().toString(),
+                            text: newTaskText.trim(),
+                            completed: false,
+                          },
+                        ]);
+                        setNewTaskText("");
+                      }
+                    }}
+                    placeholder="添加计划任务 (按回车保存)..."
+                    className="bg-transparent border-none outline-none text-sm text-white w-full placeholder:text-white/30"
+                  />
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex flex-wrap items-center justify-between px-8 py-4 rounded-[3rem] bg-white/[0.01] backdrop-blur-[2px] border border-white/10 shadow-2xl gap-4">
+                {/* Sliders and Selectors */}
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  <div className="flex items-center space-x-3 w-40">
+                    <select
+                      value={musicId}
+                      onChange={(e) => onSelectMusic(e.target.value)}
+                      className="bg-transparent border border-white/20 rounded px-2 py-1 text-xs text-white/80 outline-none w-20 truncate"
+                      title="选择音乐"
+                    >
+                      {MUSIC_TRACKS.map((m) => (
+                        <option key={m.id} value={m.id} className="text-black">
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex-1 h-2 flex items-center relative group">
+                      <div className="w-full h-1 bg-white/20 rounded-full relative pointer-events-none">
+                        <div
+                          className="h-full bg-white/80 transition-all"
+                          style={{ width: `${musicVolume}%` }}
+                        ></div>
+                        <div
+                          className="w-2.5 h-2.5 bg-white rounded-full absolute -top-[3px] -ml-1 transition-all"
+                          style={{ left: `${musicVolume}%` }}
+                        ></div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={musicVolume}
+                        onChange={(e) =>
+                          onMusicVolumeChange(Number(e.target.value))
+                        }
+                        className="w-full absolute opacity-0 cursor-pointer h-full z-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 w-32">
+                    <span className="text-xs text-white/60 w-10">背景音</span>
+                    <div className="flex-1 h-2 flex items-center relative group">
+                      <div className="w-full h-1 bg-white/20 rounded-full relative pointer-events-none">
+                        <div
+                          className="h-full bg-white/80 transition-all"
+                          style={{ width: `${bgVolume}%` }}
+                        ></div>
+                        <div
+                          className="w-2.5 h-2.5 bg-white rounded-full absolute -top-[3px] -ml-1 transition-all"
+                          style={{ left: `${bgVolume}%` }}
+                        ></div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={bgVolume}
+                        onChange={(e) =>
+                          onBgVolumeChange(Number(e.target.value))
+                        }
+                        className="w-full absolute opacity-0 cursor-pointer h-full z-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsRunning(!isRunning)}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-colors text-sm"
+                  >
+                    {isRunning ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
+                    <span>{isRunning ? "暂停" : "继续"}</span>
+                  </button>
+                  <button
+                    onClick={handleFinish}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-colors text-sm"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                    <span>跳过</span>
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-colors text-sm"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>重置</span>
+                  </button>
+                  <button
+                    onClick={onExit}
+                    className="flex items-center space-x-2 px-6 py-2 rounded-full border border-white/40 hover:bg-white/20 transition-colors text-sm"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>结束学习</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </main>
+
+      {/* Immersive Mode Escaper */}
+      <AnimatePresence>
+        {isImmersive && showImmersiveUI && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => toggleImmersive(false)}
+            className="absolute top-8 right-8 z-50 p-3 rounded-full bg-black/20 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors text-white/50 hover:text-white"
+          >
+            <Minimize className="w-5 h-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Completion Overlay */}
+      <AnimatePresence>
+        {timeLeft === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          >
+            <div className="text-center p-10 rounded-[2rem] bg-white/[0.05] backdrop-blur-[4px] border border-white/10 shadow-2xl mx-4 max-w-md w-full">
+              <h2 className="text-3xl font-medium mb-4 tracking-wide">
+                专注完成！
+              </h2>
+              <p className="text-sm text-white/70 mb-8 leading-relaxed">
+                你已经完成了一个番茄钟的任务，稍作休息准备下一个挑战。
+              </p>
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={() => {
+                    setTimeLeft(durationMinutes * 60);
+                    setIsRunning(true);
+                  }}
+                  className="w-full py-4 rounded-full bg-white text-black hover:bg-white/90 transition-colors font-medium text-sm"
+                >
+                  开始下一个
+                </button>
+                <button
+                  onClick={onExit}
+                  className="w-full py-4 rounded-full border border-white/20 bg-transparent hover:bg-white/10 transition-colors text-sm"
+                >
+                  返回首页
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Side nav chevrons (visual only) */}
+      {!isImmersive && (
+        <>
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 p-4 text-white/30 hover:text-white/60 transition-colors cursor-pointer hidden md:block">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 p-4 text-white/30 hover:text-white/60 transition-colors cursor-pointer hidden md:block">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </div>
+        </>
+      )}
     </div>
   );
 }

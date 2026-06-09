@@ -1,99 +1,132 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import type { Achievement } from './types';
-import { useStudyStore } from './store';
-import { MainPage } from './components/MainPage';
-import { StatsPage } from './components/StatsPage';
-import { HistoryPage } from './components/HistoryPage';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { OnboardingGuide } from './components/OnboardingGuide';
-import { LangProvider } from './i18n';
-import { checkAchievements, ACHIEVEMENTS, AchievementCtx } from './extras';
-
-function AppShell() {
-  const navigate = useNavigate();
-  const store = useStudyStore();
-  const earnedRef = useRef(store.earnedAchievements);
-  earnedRef.current = store.earnedAchievements;
-
-  // Achievement checking
-  useEffect(() => {
-    const totalMinutes = store.studyHistory.reduce((s, h) => s + h.duration, 0) / 60;
-    const ctx: AchievementCtx = {
-      totalMinutes, pomodoroCount: store.pomodoroCount, streak: store.streak,
-      sessions: store.studyHistory, sessionCount: store.studyHistory.length,
-    };
-    const earned = checkAchievements(ctx).map(a => a.id);
-    earned.filter(id => !earnedRef.current.includes(id)).forEach(id => store.earnAchievement(id));
-  }, [store.studyHistory, store.pomodoroCount, store.streak]);
-
-  // Streak calculation
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const todaySessions = store.studyHistory.filter(s => s.date.slice(0, 10) === today);
-    const totalMinutes = todaySessions.reduce((s, h) => s + h.duration, 0) / 60;
-    if (todaySessions.length === 0 || totalMinutes < store.dailyGoal.targetMinutes) return;
-    const lastDur = (todaySessions[todaySessions.length - 1]?.duration || 0) / 60;
-    if (totalMinutes - lastDur >= store.dailyGoal.targetMinutes) return;
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const yMin = store.studyHistory.filter(s => s.date.slice(0, 10) === yesterday).reduce((s, h) => s + h.duration, 0) / 60;
-    store.updateStreak(yMin >= store.dailyGoal.targetMinutes ? store.streak + 1 : 1);
-  }, [store.studyHistory, store.dailyGoal]);
-
-  // Service Worker
-  useEffect(() => {
-    if ('serviceWorker' in navigator)
-      navigator.serviceWorker.register('/sw.js').catch(e => console.error('SW registration failed:', e));
-  }, []);
-
-  const achievements: Achievement[] = useMemo(
-    () => ACHIEVEMENTS.map(a => ({
-      id: a.id, title: a.title, desc: a.desc, icon: a.icon,
-      earned: store.earnedAchievements.includes(a.id),
-    })),
-    [store.earnedAchievements]
-  );
-
-  return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-black text-white selection:bg-white/30">
-        <OnboardingGuide isOpen={store.showOnboarding} onClose={() => store.dismissOnboarding()} />
-        <Routes>
-          <Route path="/" element={
-            <MainPage
-              onStats={() => navigate('/stats')}
-              onHistory={() => navigate('/history')}
-              streak={store.streak}
-              pomodoroCount={store.pomodoroCount}
-              achievements={achievements}
-              onOpenGuide={() => useStudyStore.setState({ showOnboarding: true })}
-            />
-          } />
-          <Route path="/stats" element={
-            <StatsPage
-              studyHistory={store.studyHistory} dailyGoal={store.dailyGoal}
-              streak={store.streak} pomodoroCount={store.pomodoroCount}
-              achievements={achievements} onBack={() => navigate('/')}
-            />
-          } />
-          <Route path="/history" element={
-            <HistoryPage
-              studyHistory={store.studyHistory} onBack={() => navigate('/')}
-              onClearHistory={() => useStudyStore.setState({ studyHistory: [], streak: 0, pomodoroCount: 0 })}
-            />
-          } />
-        </Routes>
-      </div>
-    </ErrorBoundary>
-  );
-}
+import React, { useState, useEffect } from "react";
+import { AppState, Task, InfoDocId } from "./types";
+import { LandingPage } from "./components/LandingPage";
+import { SetupPage } from "./components/SetupPage";
+import { TimerPage } from "./components/TimerPage";
+import { InfoPage } from "./components/InfoPage";
+import { SCENES, DURATIONS, MUSIC_TRACKS } from "./data";
+import { audioManager } from "./audioManager";
 
 export default function App() {
+  const [appState, setAppState] = useState<AppState>("landing");
+  const [activeDocId, setActiveDocId] = useState<InfoDocId>("guide");
+
+  const savedState = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("studyWithMeState") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+
+  const [selectedSceneId, setSelectedSceneId] = useState<string>(
+    savedState.selectedSceneId || SCENES[0].id,
+  );
+  const [selectedMusicId, setSelectedMusicId] = useState<string>(
+    savedState.selectedMusicId || MUSIC_TRACKS[0].id,
+  );
+  const [musicVolume, setMusicVolume] = useState<number>(
+    savedState.musicVolume ?? 50,
+  );
+  const [bgVolume, setBgVolume] = useState<number>(savedState.bgVolume ?? 30);
+  const [timerDuration, setTimerDuration] = useState<number>(
+    savedState.timerDuration ?? DURATIONS[1],
+  );
+  const [tasks, setTasks] = useState<Task[]>(savedState.tasks ?? []);
+  const [pomodoroCount, setPomodoroCount] = useState<number>(
+    savedState.pomodoroCount ?? 0,
+  );
+
+  useEffect(() => {
+    localStorage.setItem(
+      "studyWithMeState",
+      JSON.stringify({
+        selectedSceneId,
+        selectedMusicId,
+        musicVolume,
+        bgVolume,
+        timerDuration,
+        tasks,
+        pomodoroCount,
+      }),
+    );
+  }, [
+    selectedSceneId,
+    selectedMusicId,
+    musicVolume,
+    bgVolume,
+    timerDuration,
+    tasks,
+    pomodoroCount,
+  ]);
+
   return (
-    <LangProvider>
-      <BrowserRouter>
-        <AppShell />
-      </BrowserRouter>
-    </LangProvider>
+    <div className="min-h-screen bg-black text-white selection:bg-white/30">
+      {appState === "landing" && (
+        <LandingPage
+          onStart={() => {
+            setAppState("setup");
+          }}
+          onNavigate={(docId) => {
+            setActiveDocId(docId);
+            setAppState("info");
+          }}
+        />
+      )}
+
+      {appState === "setup" && (
+        <SetupPage
+          selectedSceneId={selectedSceneId}
+          onSelectScene={setSelectedSceneId}
+          selectedMusicId={selectedMusicId}
+          onSelectMusic={setSelectedMusicId}
+          musicVolume={musicVolume}
+          onMusicVolumeChange={setMusicVolume}
+          bgVolume={bgVolume}
+          onBgVolumeChange={setBgVolume}
+          timerDuration={timerDuration}
+          onTimerDurationChange={setTimerDuration}
+          onEnter={() => {
+            audioManager.init();
+            const musicTrack = MUSIC_TRACKS.find(
+              (m) => m.id === selectedMusicId,
+            );
+            if (musicTrack) audioManager.setMusic(musicTrack.audioUrl);
+            const scene = SCENES.find((s) => s.id === selectedSceneId);
+            if (scene && scene.audioUrl) audioManager.setBg(scene.audioUrl);
+            audioManager.setMusicVolume(musicVolume / 100);
+            audioManager.setBgVolume(bgVolume / 100);
+            audioManager.play();
+            setAppState("timer");
+          }}
+          onBack={() => setAppState("landing")}
+        />
+      )}
+
+      {appState === "timer" && (
+        <TimerPage
+          sceneId={selectedSceneId}
+          musicId={selectedMusicId}
+          onSelectMusic={setSelectedMusicId}
+          durationMinutes={timerDuration}
+          musicVolume={musicVolume}
+          onMusicVolumeChange={setMusicVolume}
+          bgVolume={bgVolume}
+          onBgVolumeChange={setBgVolume}
+          onExit={() => {
+            audioManager.stop();
+            setAppState("landing");
+          }}
+          tasks={tasks}
+          onTasksChange={setTasks}
+          pomodoroCount={pomodoroCount}
+          onPomodoroComplete={() => setPomodoroCount((prev) => prev + 1)}
+        />
+      )}
+
+      {appState === "info" && (
+        <InfoPage docId={activeDocId} onClose={() => setAppState("landing")} />
+      )}
+    </div>
   );
 }
