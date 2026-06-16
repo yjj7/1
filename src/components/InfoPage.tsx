@@ -246,50 +246,50 @@ export function InfoPage({ docId, onClose }: InfoPageProps) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center font-sans tracking-wide">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 font-sans tracking-wide">
         {/* Transparent backdrop - deep glass */}
         <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-2xl"
+          className="absolute inset-0 bg-black/40 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.7, ease: "anticipate" }}
+          transition={{ duration: 0.5, ease: "anticipate" }}
           onClick={onClose}
         />
 
-        {/* Content Container - Pure full-screen fluid glass, no box borders */}
+        {/* Content Container - Glass modal */}
         <motion.div
-          className="relative w-full h-full max-w-4xl mx-auto flex flex-col pointer-events-none"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          className="relative w-full max-w-3xl bg-white/[0.03] backdrop-blur-[12px] border border-white/10 shadow-2xl rounded-[2rem] flex flex-col pointer-events-auto h-auto max-h-[85vh]"
+          initial={{ opacity: 0, y: 30, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.98 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
           {/* Header */}
-          <div className="pt-20 pb-8 px-10 flex justify-between items-start pointer-events-auto">
+          <div className="pt-10 pb-6 px-10 flex justify-between items-start sticky top-0 bg-gradient-to-b from-black/20 to-transparent z-10">
             <div className="flex flex-col gap-2">
-              <h2 className="text-4xl font-light tracking-widest text-white/90">
+              <h2 className="text-3xl font-light tracking-widest text-white/90">
                 {doc.title}
               </h2>
-              <span className="text-sm tracking-widest text-white/40 uppercase font-medium mt-1">
+              <span className="text-xs tracking-widest text-white/40 uppercase font-medium mt-1">
                 {doc.subtitle}
               </span>
             </div>
             <button
               onClick={onClose}
-              className="p-4 bg-white/[0.03] hover:bg-white/10 rounded-full transition-all group flex items-center justify-center -mr-4 border border-white/5"
+              className="p-3 bg-white/[0.05] hover:bg-white/10 rounded-full transition-all group flex items-center justify-center border border-white/5"
             >
               <X
-                className="w-6 h-6 text-white/60 group-hover:text-white group-hover:rotate-90 transition-all duration-500"
-                strokeWidth={1}
+                className="w-5 h-5 text-white/60 group-hover:text-white transition-all duration-300"
+                strokeWidth={1.5}
               />
             </button>
           </div>
 
-          <div className="w-full h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mb-10"></div>
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-6"></div>
 
           {/* Scrollable Content */}
-          <div className="px-10 pb-32 overflow-y-auto w-full custom-scrollbar pointer-events-auto">
+          <div className="px-10 pb-12 overflow-y-auto w-full custom-scrollbar">
             {doc.content}
           </div>
         </motion.div>

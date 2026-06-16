@@ -49,25 +49,25 @@ export function SetupPage({
         <div className="absolute inset-0 bg-black/10"></div>
       </motion.div>
 
-      {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-6">
-        <div
-          className="flex items-center space-x-3 group cursor-pointer"
-          onClick={onBack}
+      {/* Floating Back Button (Top Right) */}
+      <button
+        onClick={onBack}
+        className="absolute top-8 right-8 z-50 p-3 rounded-full bg-black/20 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+      >
+        <svg
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+          className="w-5 h-5"
         >
-          <Aperture className="w-6 h-6" strokeWidth={1.5} />
-          <span className="text-xl font-medium tracking-widest">深境</span>
-        </div>
-
-        <nav className="flex-1 flex justify-start ml-16 space-x-6 text-sm text-white/70">
-          <button
-            onClick={() => window.location.reload()}
-            className="hover:text-white transition-colors"
-          >
-            首页
-          </button>
-        </nav>
-      </header>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
 
       {/* Main Content Grid */}
       <main className="relative z-10 flex-1 flex flex-col md:flex-row gap-8 px-8 md:px-24 py-8 overflow-hidden max-w-[1600px] mx-auto w-full">

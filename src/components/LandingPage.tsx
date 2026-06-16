@@ -24,6 +24,14 @@ export function LandingPage({ onStart, onNavigate }: LandingPageProps) {
         <div className="absolute inset-0 bg-black/20 mix-blend-multiply z-10"></div>
       </motion.div>
 
+      {/* Header to prevent layout shift */}
+      <header className="relative z-10 flex items-center justify-between px-8 py-6 min-h-[88px]">
+        <div className="flex items-center space-x-3">
+          {/* Logo only, title removed */}
+          <Aperture className="w-7 h-7" strokeWidth={1.5} />
+        </div>
+      </header>
+
       {/* Main Content */}
       <main className="relative z-10 flex-1 flex flex-col justify-center items-center px-4">
         <motion.div
@@ -53,12 +61,9 @@ export function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 py-8 px-10 md:px-16 flex flex-col md:flex-row justify-between items-center bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-        <div className="flex items-center space-x-3 mb-4 md:mb-0 opacity-80 hover:opacity-100 transition-opacity">
-          <Aperture className="w-5 h-5 text-white" strokeWidth={1.5} />
-          <span className="text-lg text-white font-medium tracking-widest">
-            深境
-          </span>
+      <footer className="relative z-10 py-8 px-10 md:px-16 flex justify-between items-center bg-transparent mt-auto">
+        <div className="flex items-center space-x-3 opacity-60">
+          <Aperture className="w-5 h-5 text-white" strokeWidth={1} />
         </div>
 
         <div className="flex space-x-8 text-xs font-light tracking-widest uppercase text-white/50">
@@ -66,19 +71,25 @@ export function LandingPage({ onStart, onNavigate }: LandingPageProps) {
             onClick={() => onNavigate("scenes")}
             className="hover:text-white transition-colors"
           >
-            体验空间
+            空间
           </button>
           <button
             onClick={() => onNavigate("method")}
             className="hover:text-white transition-colors"
           >
-            心流指引
+            心流
+          </button>
+          <button
+            onClick={() => onNavigate("guide")}
+            className="hover:text-white transition-colors"
+          >
+            指引
           </button>
           <button
             onClick={() => onNavigate("about")}
             className="hover:text-white transition-colors"
           >
-            关于深境
+            关于
           </button>
         </div>
       </footer>

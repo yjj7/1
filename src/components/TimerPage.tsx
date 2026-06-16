@@ -56,6 +56,12 @@ export function TimerPage({
   const [isImmersive, setIsImmersive] = useState(false);
   const [showImmersiveUI, setShowImmersiveUI] = useState(true);
   const [newTaskText, setNewTaskText] = useState("");
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     audioManager.setMusicVolume(musicVolume / 100);
@@ -90,7 +96,10 @@ export function TimerPage({
   }, [isRunning]);
 
   const totalTime = durationMinutes * 60;
-  const progressPercent = ((totalTime - timeLeft) / totalTime) * 100;
+  const progressPercent = Math.max(
+    0,
+    Math.min(100, ((totalTime - timeLeft) / totalTime) * 100),
+  );
 
   const playDing = () => {
     try {
@@ -111,13 +120,6 @@ export function TimerPage({
     } catch (e) {
       console.warn("AudioContext not available");
     }
-  };
-
-  const handleFinish = () => {
-    setTimeLeft(0);
-    setIsRunning(false);
-    onPomodoroComplete();
-    playDing();
   };
 
   useEffect(() => {
@@ -165,12 +167,12 @@ export function TimerPage({
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    if (isRunning && timeLeft > 0) {
+    if (isRunning) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            clearInterval(interval);
-            handleFinish();
+            setIsRunning(false);
+            playDing();
             return 0;
           }
           return prev - 1;
@@ -178,15 +180,22 @@ export function TimerPage({
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft, handleFinish]);
+  }, [isRunning]);
 
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    }
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const handleReset = () => setTimeLeft(durationMinutes * 60);
+  const handleReset = () => {
+    setTimeLeft(durationMinutes * 60);
+    setIsRunning(true);
+  };
 
   return (
     <div
@@ -224,12 +233,6 @@ export function TimerPage({
               >
                 <X className="w-5 h-5" />
               </button>
-              <div className="flex items-center space-x-3">
-                <Aperture className="w-5 h-5" strokeWidth={1.5} />
-                <span className="text-xl font-medium tracking-widest">
-                  深境
-                </span>
-              </div>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -268,7 +271,7 @@ export function TimerPage({
         >
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-medium tracking-widest text-white/80">
-              专注闹钟 #{pomodoroCount + 1}
+              专注倒计时
             </span>
             <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
               <div
@@ -280,7 +283,7 @@ export function TimerPage({
             </div>
           </div>
 
-          <div className="text-6xl font-light tracking-tight mb-8 tabular-nums">
+          <div className="text-6xl font-light tracking-tight mb-8 tabular-nums text-left">
             {formatTime(timeLeft)}
           </div>
 
@@ -464,13 +467,6 @@ export function TimerPage({
                     <span>{isRunning ? "暂停" : "继续"}</span>
                   </button>
                   <button
-                    onClick={handleFinish}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-colors text-sm"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                    <span>跳过</span>
-                  </button>
-                  <button
                     onClick={handleReset}
                     className="flex items-center space-x-2 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-colors text-sm"
                   >
@@ -503,44 +499,6 @@ export function TimerPage({
           >
             <Minimize className="w-5 h-5" />
           </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Completion Overlay */}
-      <AnimatePresence>
-        {timeLeft === 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          >
-            <div className="text-center p-10 rounded-[2rem] bg-white/[0.05] backdrop-blur-[4px] border border-white/10 shadow-2xl mx-4 max-w-md w-full">
-              <h2 className="text-3xl font-medium mb-4 tracking-wide">
-                专注完成！
-              </h2>
-              <p className="text-sm text-white/70 mb-8 leading-relaxed">
-                你已经完成了一个番茄钟的任务，稍作休息准备下一个挑战。
-              </p>
-              <div className="flex flex-col space-y-3">
-                <button
-                  onClick={() => {
-                    setTimeLeft(durationMinutes * 60);
-                    setIsRunning(true);
-                  }}
-                  className="w-full py-4 rounded-full bg-white text-black hover:bg-white/90 transition-colors font-medium text-sm"
-                >
-                  开始下一个
-                </button>
-                <button
-                  onClick={onExit}
-                  className="w-full py-4 rounded-full border border-white/20 bg-transparent hover:bg-white/10 transition-colors text-sm"
-                >
-                  返回首页
-                </button>
-              </div>
-            </div>
-          </motion.div>
         )}
       </AnimatePresence>
 
@@ -577,6 +535,14 @@ export function TimerPage({
           </div>
         </>
       )}
+
+      {/* Clock in bottom right */}
+      <div
+        className="absolute right-8 bottom-8 text-white/60 font-mono tracking-widest text-lg pointer-events-none transition-opacity duration-1000 z-10"
+        style={{ opacity: isImmersive && !showImmersiveUI ? 0 : 1 }}
+      >
+        {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      </div>
     </div>
   );
 }
